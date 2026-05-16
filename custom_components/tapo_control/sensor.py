@@ -340,27 +340,23 @@ class TapoSyncSensor(TapoSensorEntity):
             "runningMediaSync"
         ]
         LOGGER.debug("Enable Media Sync: %s", enable_media_sync)
-        if enable_media_sync or runningMediaSync is True:
-            data = self._hass.data[DOMAIN][self._config_entry.entry_id]
-            LOGGER.debug("Initial Media Scan: %s", data["initialMediaScanDone"])
-            LOGGER.debug("Media Sync Available: %s", data["mediaSyncAvailable"])
-            LOGGER.debug("Download Progress: %s", data["downloadProgress"])
-            LOGGER.debug("Running media sync: %s", data["runningMediaSync"])
-            LOGGER.debug("Media Sync Schedueled: %s", data["mediaSyncScheduled"])
-            LOGGER.debug("Media Sync Ran Once: %s", data["mediaSyncRanOnce"])
+        self._attr_native_value = "Idle"
+        if not (enable_media_sync or runningMediaSync):
+            return
+        data = self._hass.data[DOMAIN][self._config_entry.entry_id]
+        LOGGER.debug("Initial Media Scan: %s", data["initialMediaScanDone"])
+        LOGGER.debug("Media Sync Available: %s", data["mediaSyncAvailable"])
+        LOGGER.debug("Download Progress: %s", data["downloadProgress"])
+        LOGGER.debug("Running media sync: %s", data["runningMediaSync"])
+        LOGGER.debug("Media Sync Schedueled: %s", data["mediaSyncScheduled"])
+        LOGGER.debug("Media Sync Ran Once: %s", data["mediaSyncRanOnce"])
 
-            if not data["initialMediaScanDone"] or (
-                data["initialMediaScanDone"] and not data["mediaSyncRanOnce"]
-            ):
-                self._attr_native_value = "Starting"
-            elif not data["mediaSyncAvailable"]:
-                self._attr_native_value = "No Recordings Found"
-            elif data["downloadProgress"]:
-                if data["downloadProgress"] == "Finished download":
-                    self._attr_native_value = "Idle"
-                else:
-                    self._attr_native_value = data["downloadProgress"]
-            else:
-                self._attr_native_value = "Idle"
-        else:
-            self._attr_native_value = "Idle"
+        if not data["initialMediaScanDone"] or (
+            data["initialMediaScanDone"] and not data["mediaSyncRanOnce"]
+        ):
+            self._attr_native_value = "Starting"
+        elif not data["mediaSyncAvailable"]:
+            self._attr_native_value = "No Recordings Found"
+        elif data["downloadProgress"] != "Finished download":
+            self._attr_native_value = data["downloadProgress"]
+        
