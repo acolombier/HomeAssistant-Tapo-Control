@@ -141,7 +141,7 @@ async def async_setup_entry(
         tapoAlertTypeSelect = await check_and_create(
             entry, hass, TapoAlertTypeSelect, "getAlertTypeList", config_entry
         )
-        if entry["controller"].isKLAP is False:
+        if not entry["controller"].isKLAP:
             if tapoAlertTypeSelect:
                 LOGGER.debug("Adding tapoAlertTypeSelect...")
                 selects.append(tapoAlertTypeSelect)

@@ -803,10 +803,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         f"{controllerData['name']} running on battery: {controllerData['isRunningOnBattery']}"
                     )
                     if (
-                        controllerData["isRunningOnBattery"] is False
+                        not controllerData["isRunningOnBattery"]
                         and ts - controllerData["lastUpdate"] > updateIntervalMain
                     ) or (
-                        controllerData["isRunningOnBattery"] is True
+                        controllerData["isRunningOnBattery"]
                         and ts - controllerData["lastUpdate"] > updateIntervalBattery
                     ):
                         timeForAnUpdate = True
@@ -1007,10 +1007,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         }
         LOGGER.debug("Entry data has been set up.")
 
-        if tapoController.isKLAP is False:
+        if not tapoController.isKLAP:
             LOGGER.debug("Controller is not KLAP device.")
             if not (
-                camData["childDevices"] is False or camData["childDevices"] is None
+                not camData["childDevices"] or camData["childDevices"] is None
             ):
                 LOGGER.debug("Device is a parent.")
                 hass.data[DOMAIN][entry.entry_id]["isParent"] = True
@@ -1124,7 +1124,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         # Needs to execute AFTER binary_sensor creation!
         if (
-            tapoController.isKLAP is False
+            not tapoController.isKLAP
             and camData["childDevices"] is None
             and (motionSensor or enableTimeSync)
         ):
@@ -1169,9 +1169,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 enableMediaSync
                 and entry.entry_id in hass.data[DOMAIN]
                 and "controller" in device
-                and device["runningMediaSync"] is False
-                and device["isDownloadingStream"]
-                is False  # prevent breaking user manual upload
+                and not device["runningMediaSync"]
+                and not device["isDownloadingStream"]  # prevent breaking user manual upload
             ):
                 LOGGER.debug("Running media sync for " + device["name"] + "...")
                 device["runningMediaSync"] = True
@@ -1190,7 +1189,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                             enableMediaSync = device[ENABLE_MEDIA_SYNC]
                             LOGGER.debug("inside for - 2")
                             if enableMediaSync and (
-                                (mediaSyncTime is False)
+                                not mediaSyncTime
                                 or (
                                     (
                                         mediaSyncTime is not False

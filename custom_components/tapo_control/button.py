@@ -23,7 +23,7 @@ async def async_setup_entry(
         buttons = []
         if not entry["isChild"]:
             buttons.append(TapoRebootButton(entry, hass, config_entry))
-            if entry["controller"].isKLAP is False:
+            if not entry["controller"].isKLAP:
                 buttons.append(TapoFormatButton(entry, hass, config_entry))
 
             tapoStartManualAlarmButton = await check_and_create(
@@ -40,7 +40,7 @@ async def async_setup_entry(
                 LOGGER.debug("Adding tapoStopManualAlarmButton...")
                 buttons.append(tapoStopManualAlarmButton)
 
-            if not entry["isParent"] and entry["controller"].isKLAP is False:
+            if not entry["isParent"] and not entry["controller"].isKLAP:
                 buttons.append(TapoSyncTimeButton(entry, hass, config_entry))
 
         tapoCalibrateButton = await check_and_create(

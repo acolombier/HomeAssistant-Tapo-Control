@@ -72,7 +72,7 @@ async def async_setup_entry(
             ):
                 sensors.append(TapoChimeSignalLevel(entry, hass, config_entry))
 
-        if entry["controller"].isKLAP is False:
+        if not entry["controller"].isKLAP:
             sensors.append(TapoSyncSensor(entry, hass, config_entry))
 
         return sensors
@@ -110,7 +110,7 @@ class TapoRSSISensor(TapoSensorEntity):
         """Update the entity."""
         if (
             not camData
-            or camData["connectionInformation"] is False
+            or not camData["connectionInformation"]
             or "rssiValue" not in camData["connectionInformation"]
         ):
             self._attr_native_value = STATE_UNAVAILABLE
@@ -145,7 +145,7 @@ class TapoLinkTypeSensor(TapoSensorEntity):
         """Update the entity."""
         if (
             not camData
-            or camData["connectionInformation"] is False
+            or not camData["connectionInformation"]
             or "link_type" not in camData["connectionInformation"]
         ):
             self._attr_native_value = STATE_UNAVAILABLE
@@ -180,7 +180,7 @@ class TapoChimeSignalLevel(TapoSensorEntity):
         """Update the entity."""
         if (
             not camData
-            or camData["basic_info"] is False
+            or not camData["basic_info"]
             or camData["basic_info"] is None
             or "signal_level" not in camData["basic_info"]
         ):
@@ -216,7 +216,7 @@ class TapoSSIDSensor(TapoSensorEntity):
         """Update the entity."""
         if (
             not camData
-            or camData["connectionInformation"] is False
+            or not camData["connectionInformation"]
             or "ssid" not in camData["connectionInformation"]
         ):
             self._attr_native_value = STATE_UNAVAILABLE

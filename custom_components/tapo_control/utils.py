@@ -218,7 +218,7 @@ def getHotDirPathForEntry(hass: HomeAssistant, entry_id: str):
     hotDirPath = os.path.join(getDataPath(), f"www/{DOMAIN}/{entry_id}/")
 
     if entry_id in hass.data[DOMAIN]:
-        if hass.data[DOMAIN][entry_id]["mediaSyncHotDir"] is False:
+        if not hass.data[DOMAIN][entry_id]["mediaSyncHotDir"]:
             pathlib.Path(hotDirPath + "/videos").mkdir(parents=True, exist_ok=True)
             pathlib.Path(hotDirPath + "/thumbs").mkdir(parents=True, exist_ok=True)
             hass.data[DOMAIN][entry_id]["mediaSyncHotDir"] = hotDirPath
@@ -439,18 +439,16 @@ async def deleteColdFilesOlderThanMaxSyncTime(
                 filePath = os.path.join(coldDirPath + "/" + folder + "/", f)
                 splitFileName = fileName.split("-")
                 isOldFormat = (
-                    (entryData["isChild"] is False and fileName.count("-") == 1)
-                    or (
-                        (entryData["isChild"] is True and fileName.count("-") == 2)
-                        and childID in fileName
-                    )
+                    not entryData["isChild"] and fileName.count("-") == 1
+                ) or (
+                    (entryData["isChild"] and fileName.count("-") == 2)
+                    and childID in fileName
                 )
                 isNewFormat = (
-                    (entryData["isChild"] is False and fileName.count("-") == 4)
-                    or (
-                        (entryData["isChild"] is True and fileName.count("-") == 5)
-                        and childID in fileName
-                    )
+                    not entryData["isChild"] and fileName.count("-") == 4
+                ) or (
+                    (entryData["isChild"] and fileName.count("-") == 5)
+                    and childID in fileName
                 )
                 if isOldFormat:
                     endTS = int(splitFileName[-1])
@@ -762,7 +760,7 @@ async def getRecording(
                 date,
                 (
                     len(allRecordings)
-                    if totalRecordingCount is False
+                    if not totalRecordingCount
                     else totalRecordingCount
                 ),
                 recordingCount if recordingCount is not False else False,
@@ -1507,7 +1505,7 @@ async def getCamData(hass, controller, chInfo=None):
     alarmConfig = None
     alarmStatus = False
     alarmSirenTypeList = []
-    if controller.isKLAP is False:
+    if not controller.isKLAP:
         try:
             if data["getSirenConfig"][0] != False:
                 hubSiren = True
@@ -1521,7 +1519,7 @@ async def getCamData(hass, controller, chInfo=None):
         except Exception as err:
             LOGGER.error(f"getSirenConfig unexpected error {err=}, {type(err)=}")
 
-    if controller.isKLAP is False:
+    if not controller.isKLAP:
         try:
             if not hubSiren and data["getAlarmConfig"][0] != False:
                 alarmData = data["getAlarmConfig"][0]
@@ -1546,7 +1544,7 @@ async def getCamData(hass, controller, chInfo=None):
         except Exception as err:
             LOGGER.error(f"getAlarmConfig unexpected error {err=}, {type(err)=}")
 
-    if controller.isKLAP is False:
+    if not controller.isKLAP:
         try:
             if (
                 alarmConfig is None
@@ -1580,7 +1578,7 @@ async def getCamData(hass, controller, chInfo=None):
         except Exception as err:
             LOGGER.error(f"getLastAlarmInfo unexpected error {err=}, {type(err)=}")
 
-    if controller.isKLAP is False:
+    if not controller.isKLAP:
         try:
             if (
                 data["getSirenStatus"][0] is not False
@@ -1590,7 +1588,7 @@ async def getCamData(hass, controller, chInfo=None):
         except Exception as err:
             LOGGER.error(f"getSirenStatus unexpected error {err=}, {type(err)=}")
 
-    if controller.isKLAP is False:
+    if not controller.isKLAP:
         if alarmConfig is not None:
             try:
                 if (
@@ -1601,7 +1599,7 @@ async def getCamData(hass, controller, chInfo=None):
             except Exception as err:
                 LOGGER.error(f"getSirenTypeList unexpected error {err=}, {type(err)=}")
 
-    if controller.isKLAP is False:
+    if not controller.isKLAP:
         if len(alarmSirenTypeList) == 0:
             try:
                 if (
@@ -2090,7 +2088,7 @@ async def setupOnvif(hass, entry):
 async def setupEvents(hass, config_entry):
     LOGGER.debug("setupEvents - entry")
     shouldUseWebhooks = (
-        isUsingHTTPS(hass) is False and config_entry.data.get(ENABLE_WEBHOOKS) is True
+        not isUsingHTTPS(hass) and config_entry.data.get(ENABLE_WEBHOOKS)
     )
     LOGGER.debug("Using HTTPS: " + str(isUsingHTTPS(hass)))
     LOGGER.debug(
@@ -2228,8 +2226,8 @@ async def scheduleAll(hass, device, entry, mediaSync):
     LOGGER.debug("scheduleAll for " + device["name"] + " called.")
     if device["mediaSyncAvailable"]:
         if (
-            device["initialMediaScanDone"] is True
-            and device["mediaSyncScheduled"] is False
+            device["initialMediaScanDone"]
+            and not device["mediaSyncScheduled"]
         ):
             device["mediaSyncScheduled"] = True
             LOGGER.debug("Scheduling media sync")
@@ -2242,7 +2240,7 @@ async def scheduleAll(hass, device, entry, mediaSync):
                     datetime.timedelta(seconds=60),
                 )
             )
-        elif device["initialMediaScanRunning"] is False:
+        elif not device["initialMediaScanRunning"]:
             LOGGER.debug("Media scan running")
             device["initialMediaScanRunning"] = True
             try:
@@ -2275,7 +2273,7 @@ async def check_functionality(entry, hass, cls, check_function):
             return True
         else:
             if (
-                entry["controller"].isKLAP is False
+                not entry["controller"].isKLAP
             ):  # no uncached entries for klap devices, so no need to check them
                 LOGGER.debug(
                     f"Capability {check_function} not found, querying again..."

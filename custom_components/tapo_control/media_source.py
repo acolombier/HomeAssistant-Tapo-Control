@@ -107,7 +107,7 @@ class TapoMediaSource(MediaSource):
                 isParent = self.hass.data[DOMAIN][entry]["isParent"]
                 device = self.hass.data[DOMAIN][entry]
 
-                if isParent is True:
+                if isParent:
                     childID = query["childID"]
                     for child in self.hass.data[DOMAIN][entry]["childDevices"]:
                         if child["camData"]["basic_info"]["dev_id"] == childID:
@@ -151,7 +151,7 @@ class TapoMediaSource(MediaSource):
         media_view_recordings_order = self.hass.data[DOMAIN][entry]["entry"].data.get(
             MEDIA_VIEW_RECORDINGS_ORDER
         )
-        if device["initialMediaScanDone"] is False:
+        if not device["initialMediaScanDone"]:
             raise Unresolvable(
                 "Initial local media scan still running, please try again later."
             )
@@ -233,12 +233,12 @@ class TapoMediaSource(MediaSource):
         media_view_days_order = self.hass.data[DOMAIN][entry]["entry"].data.get(
             MEDIA_VIEW_DAYS_ORDER
         )
-        if device["initialMediaScanDone"] is False:
+        if not device["initialMediaScanDone"]:
             raise Unresolvable(
                 "Initial local media scan still running, please try again later."
             )
 
-        if device["usingCloudPassword"] is False:
+        if not device["usingCloudPassword"]:
             raise Unresolvable(
                 "Cloud password is required in order to play recordings.\nSet cloud password inside Settings > Devices & Services > Tapo: Cameras Control > Configure."
             )
@@ -333,7 +333,7 @@ class TapoMediaSource(MediaSource):
             isParent = entry_data["isParent"]
             title = query["title"]
             device = entry_data
-            if isParent is True:
+            if isParent:
                 if "childID" in query:
                     childID = query["childID"]
                     for child in entry_data["childDevices"]:
@@ -345,9 +345,9 @@ class TapoMediaSource(MediaSource):
                 return await self.generateVideosForDate(
                     query, title, entry, query["date"], device
                 )
-            elif isParent is False or (isParent is True and "childID" in query):
+            elif not isParent or (isParent and "childID" in query):
                 return await self.generateDates(query, title, entry, device)
-            elif isParent is True:
+            elif isParent:
                 return self.generateView(
                     build_identifier(query),
                     entry_data["name"],

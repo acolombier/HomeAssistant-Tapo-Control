@@ -56,7 +56,7 @@ async def async_setup_entry(
                     )
                 )
 
-        if entry["controller"].isKLAP is False:
+        if not entry["controller"].isKLAP:
             tapoEnableMediaSyncSwitch = TapoEnableMediaSyncSwitch(
                 entry,
                 hass,

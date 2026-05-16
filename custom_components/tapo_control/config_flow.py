@@ -1084,7 +1084,7 @@ class FlowHandler(ConfigFlow):
                     else False
                 )
                 if len(username) > 0 and len(password) > 0:
-                    if skip_rtsp is True:
+                    if skip_rtsp:
                         LOGGER.debug(
                             "[ADD DEVICE][%s] Skipping verifying camera Account.", host
                         )
@@ -1175,7 +1175,7 @@ class FlowHandler(ConfigFlow):
                             raise Exception(e)
 
                     return await self.async_step_auth_optional_cloud()
-                elif skip_rtsp is False:
+                elif not skip_rtsp:
                     errors["base"] = "skip_rtsp_not_checked"
                 else:
                     self.tapoUsername = ""
