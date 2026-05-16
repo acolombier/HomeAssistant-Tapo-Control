@@ -99,6 +99,47 @@ from datetime import timedelta
 from .utils import getRecording
 
 
+def _is_running_on_battery(data):
+    basic_info = data.get("basic_info") if isinstance(data, dict) else None
+    if not basic_info:
+        return False
+    return basic_info.get("power") in ("BATTERY", "SOLAR") or basic_info.get(
+        "power_mode"
+    ) in ("BATTERY", "SOLAR")
+
+
+async def _create_controller(
+    hass, host, control_port, username, password, cloud_password="", is_klap=None
+):
+    if cloud_password:
+        LOGGER.debug("Setting up controller using cloud password.")
+        return await hass.async_add_executor_job(
+            registerController,
+            host,
+            control_port,
+            "admin",
+            cloud_password,
+            cloud_password,
+            "",
+            None,
+            is_klap,
+            hass,
+        )
+    LOGGER.debug("Setting up controller using username and password.")
+    return await hass.async_add_executor_job(
+        registerController,
+        host,
+        control_port,
+        username,
+        password,
+        "",
+        "",
+        None,
+        is_klap,
+        hass,
+    )
+
+
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Tapo: Cameras Control component from YAML."""
     transport_method = None
@@ -234,19 +275,9 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
         cloud_password = config_entry.data.get(CLOUD_PASSWORD)
 
         try:
-            if cloud_password != "":
-                tapoController = await hass.async_add_executor_job(
-                    registerController,
-                    host,
-                    443,
-                    "admin",
-                    cloud_password,
-                    cloud_password,
-                )
-            else:
-                tapoController = await hass.async_add_executor_job(
-                    registerController, host, 443, username, password
-                )
+            tapoController = await _create_controller(
+                hass, host, 443, username, password, cloud_password
+            )
             camData = await getCamData(hass, tapoController)
             macAddress = camData["basic_info"]["mac"].lower()
 
@@ -327,34 +358,15 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             cloud_password = config_entry.data.get(CLOUD_PASSWORD)
             username = config_entry.data.get(CONF_USERNAME)
             password = config_entry.data.get(CONF_PASSWORD)
-            if cloud_password != "":
-                LOGGER.debug("Setting up controller using cloud password.")
-                tapoController = await hass.async_add_executor_job(
-                    registerController,
-                    host,
-                    controlPort,
-                    "admin",
-                    cloud_password,
-                    cloud_password,
-                    "",
-                    None,
-                    isKlapDevice,
-                    hass,
-                )
-            else:
-                LOGGER.debug("Setting up controller using username and password.")
-                tapoController = await hass.async_add_executor_job(
-                    registerController,
-                    host,
-                    controlPort,
-                    username,
-                    password,
-                    "",
-                    "",
-                    None,
-                    isKlapDevice,
-                    hass,
-                )
+            tapoController = await _create_controller(
+                hass,
+                host,
+                controlPort,
+                username,
+                password,
+                cloud_password,
+                isKlapDevice,
+            )
             camData = await getCamData(hass, tapoController)
             reported_ip_address = getIP(camData)
             LOGGER.debug(f"Detected IP: {reported_ip_address}")
@@ -629,34 +641,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     try:
         LOGGER.debug(isKlapDevice)
-        if cloud_password != "":
-            LOGGER.debug("Setting up controller using cloud password.")
-            tapoController = await hass.async_add_executor_job(
-                registerController,
-                host,
-                controlPort,
-                "admin",
-                cloud_password,
-                cloud_password,
-                "",
-                None,
-                isKlapDevice,
-                hass,
-            )
-        else:
-            LOGGER.debug("Setting up controller using username and password.")
-            tapoController = await hass.async_add_executor_job(
-                registerController,
-                host,
-                controlPort,
-                username,
-                password,
-                "",
-                "",
-                None,
-                isKlapDevice,
-                hass,
-            )
+        tapoController = await _create_controller(
+            hass, host, controlPort, username, password, cloud_password, isKlapDevice
+        )
         LOGGER.debug("Controller has been set up.")
 
         def getAllEntities(entry):
@@ -833,54 +820,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                                 hass, controller, controllerData["chInfo"]
                             )
                             controllerData["isRunningOnBattery"] = (
-                                True
-                                if (
-                                    "basic_info"
-                                    in updateDataForAllControllers[controller]
-                                    and (
-                                        (
-                                            "power"
-                                            in updateDataForAllControllers[controller][
-                                                "basic_info"
-                                            ]
-                                            and (
-                                                (
-                                                    updateDataForAllControllers[
-                                                        controller
-                                                    ]["basic_info"]["power"]
-                                                    == "BATTERY"
-                                                )
-                                                or (
-                                                    updateDataForAllControllers[
-                                                        controller
-                                                    ]["basic_info"]["power"]
-                                                    == "SOLAR"
-                                                )
-                                            )
-                                        )
-                                        or (
-                                            "power_mode"
-                                            in updateDataForAllControllers[controller][
-                                                "basic_info"
-                                            ]
-                                            and (
-                                                (
-                                                    updateDataForAllControllers[
-                                                        controller
-                                                    ]["basic_info"]["power_mode"]
-                                                    == "BATTERY"
-                                                )
-                                                or (
-                                                    updateDataForAllControllers[
-                                                        controller
-                                                    ]["basic_info"]["power_mode"]
-                                                    == "SOLAR"
-                                                )
-                                            )
-                                        )
-                                    )
+                                _is_running_on_battery(
+                                    updateDataForAllControllers[controller]
                                 )
-                                else False
                             )
                             controllerData["lastUpdate"] = (
                                 datetime.datetime.utcnow().timestamp()
