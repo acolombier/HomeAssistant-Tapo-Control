@@ -56,6 +56,7 @@ TIME_SYNC_NDST_DEFAULT = 0
 
 MEDIA_VIEW_DAYS_ORDER = "media_view_days_order"
 MEDIA_VIEW_RECORDINGS_ORDER = "media_view_recordings_order"
+MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA = "media_cleanup_files_removed_from_camera"
 MEDIA_SYNC_HOURS = "media_sync_hours"
 MEDIA_SYNC_COLD_STORAGE_PATH = "media_sync_cold_storage_path"
 

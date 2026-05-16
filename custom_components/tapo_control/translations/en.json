@@ -115,6 +115,7 @@
           "media_view_days_order": "Order of days in Media Browser",
           "media_view_recordings_order": "Order of recordings in Media Browser",
           "media_sync_hours": "Number of hours to keep synchronized",
+          "media_cleanup_files_removed_from_camera": "Remove media files that have been removed from the camera",
           "media_sync_cold_storage_path": "[Requires restart] Cold storage path"
         },
         "description": "Modify settings of recordings media synchronization.\n\nRecordings are stored in the Home Assistant config folder by default (.storage/tapo_control) which is included in backups and can grow quickly. Set a Cold storage path outside of your config (for example /media/tapo_control) to avoid bloating backups."

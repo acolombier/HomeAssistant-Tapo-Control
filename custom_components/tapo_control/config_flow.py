@@ -37,6 +37,7 @@ from .const import (
     LOGGER,
     CLOUD_PASSWORD,
     ENABLE_TIME_SYNC,
+    MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA,
     MEDIA_SYNC_COLD_STORAGE_PATH,
     MEDIA_SYNC_HOURS,
     MEDIA_VIEW_DAYS_ORDER,
@@ -1499,6 +1500,9 @@ class TapoOptionsFlowHandler(OptionsFlow):
         media_sync_cold_storage_path = self.config_entry.data[
             MEDIA_SYNC_COLD_STORAGE_PATH
         ]
+        media_cleanup_files_removed_from_camera = self.config_entry.data.get(
+            MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA, True
+        )
 
         allConfigData = {**self.config_entry.data}
         if user_input is not None:
@@ -1528,6 +1532,11 @@ class TapoOptionsFlowHandler(OptionsFlow):
                 else:
                     media_sync_cold_storage_path = ""
 
+                media_cleanup_files_removed_from_camera = user_input.get(
+                    MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA,
+                    media_cleanup_files_removed_from_camera,
+                )
+
                 if media_sync_cold_storage_path != "" and not os.path.exists(
                     media_sync_cold_storage_path
                 ):
@@ -1536,6 +1545,9 @@ class TapoOptionsFlowHandler(OptionsFlow):
                 allConfigData[MEDIA_VIEW_DAYS_ORDER] = media_view_days_order
                 allConfigData[MEDIA_VIEW_RECORDINGS_ORDER] = media_view_recordings_order
                 allConfigData[MEDIA_SYNC_HOURS] = media_sync_hours
+                allConfigData[MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA] = (
+                    media_cleanup_files_removed_from_camera
+                )
                 allConfigData[MEDIA_SYNC_COLD_STORAGE_PATH] = (
                     media_sync_cold_storage_path
                 )
@@ -1571,6 +1583,12 @@ class TapoOptionsFlowHandler(OptionsFlow):
                         MEDIA_SYNC_COLD_STORAGE_PATH,
                         description={"suggested_value": media_sync_cold_storage_path},
                     ): str,
+                    vol.Optional(
+                        MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA,
+                        description={
+                            "suggested_value": media_cleanup_files_removed_from_camera
+                        },
+                    ): bool,
                 }
             ),
             errors=errors,

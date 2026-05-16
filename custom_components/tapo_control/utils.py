@@ -56,6 +56,7 @@ from .const import (
     CONF_CUSTOM_STREAM_SD,
     CONF_CUSTOM_STREAM_6,
     CONF_CUSTOM_STREAM_7,
+    MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA,
     MEDIA_SYNC_COLD_STORAGE_PATH,
     MEDIA_SYNC_HOURS,
     TIME_SYNC_DST,
@@ -369,36 +370,42 @@ async def deleteFilesNoLongerPresentInCamera(
     childID = ""
     if entryData["isChild"]:
         childID = entryData["camData"]["basic_info"]["dev_id"]
-    if entryData["initialMediaScanDone"] is True:
-        LOGGER.debug("deleteFilesNoLongerPresentInCamera - Initial scanning done.")
-        coldDirPath = getColdDirPathForEntry(hass, entry_id)
-        if os.path.exists(coldDirPath + "/" + folder + "/"):
-            LOGGER.debug("deleteFilesNoLongerPresentInCamera - path exists")
-            listDirFiles = await hass.async_add_executor_job(
-                os.listdir, coldDirPath + "/" + folder + "/"
+    if not entryData["initialMediaScanDone"]:
+        LOGGER.debug(
+            "deleteFilesNoLongerPresentInCamera - initialMediaScanDone hasn't completed yet"
+        )
+        return
+    LOGGER.debug("deleteFilesNoLongerPresentInCamera - Initial scanning done.")
+    coldDirPath = getColdDirPathForEntry(hass, entry_id)
+    path = coldDirPath + "/" + folder + "/"
+    if not os.path.exists(path):
+        LOGGER.debug(
+            "deleteFilesNoLongerPresentInCamera - path %s does not exists", path
+        )
+        return
+    LOGGER.debug("deleteFilesNoLongerPresentInCamera - path exists")
+    listDirFiles = await hass.async_add_executor_job(os.listdir, path)
+    for f in listDirFiles:
+        fileName = f.replace(extension, "")
+        filePath = os.path.join(path, f)
+        if (
+            (not entryData["isChild"] and fileName.count("-") >= 1)
+            or (
+                (entryData["isChild"] and fileName.count("-") >= 2)
+                and childID in fileName
             )
-            for f in listDirFiles:
-                fileName = f.replace(extension, "")
-                filePath = os.path.join(coldDirPath + "/" + folder + "/", f)
-                if (
-                    (entryData["isChild"] is False and fileName.count("-") == 1)
-                    or (
-                        (entryData["isChild"] is True and fileName.count("-") == 2)
-                        and childID in fileName
-                    )
-                ) and fileName not in entryData["mediaScanResult"]:
-                    LOGGER.debug(
-                        "[deleteFilesNoLongerPresentInCamera] Removing "
-                        + filePath
-                        + " ("
-                        + fileName
-                        + ")..."
-                    )
-                    entryData["downloadedStreams"].pop(
-                        fileName,
-                        None,
-                    )
-                    os.remove(filePath)
+        ) and fileName not in entryData["mediaScanResult"]:
+            LOGGER.debug(
+                "[deleteFilesNoLongerPresentInCamera] Removing %s (%s)...",
+                filePath,
+                fileName,
+            )
+            entryData["downloadedStreams"].pop(
+                fileName,
+                None,
+            )
+            LOGGER.debug("deleteFilesNoLongerPresentInCamera - Removing %s", filePath)
+            os.remove(filePath)
 
 
 async def deleteColdFilesOlderThanMaxSyncTime(
@@ -427,29 +434,29 @@ async def deleteColdFilesOlderThanMaxSyncTime(
                 fileName = f.replace(extension, "")
                 filePath = os.path.join(coldDirPath + "/" + folder + "/", f)
                 splitFileName = fileName.split("-")
-                if (entryData["isChild"] is False and fileName.count("-") == 1) or (
+                isOldFormat = (
+                    entryData["isChild"] is False and fileName.count("-") == 1
+                ) or (
                     (entryData["isChild"] is True and fileName.count("-") == 2)
                     and childID in fileName
-                ):
-                    endTS = int(fileName.split("-")[len(splitFileName) - 1])
-                    last_modified = os.stat(filePath).st_mtime
-                    if (endTS < (int(ts) - (int(mediaSyncTime) + timeCorrection))) and (
-                        ts - last_modified > int(mediaSyncTime)
-                    ):
-                        LOGGER.debug(
-                            "[deleteColdFilesOlderThanMaxSyncTime] Removing "
-                            + filePath
-                            + " ("
-                            + fileName
-                            + ") because it's older than "
-                            + str(mediaSyncTime)
-                            + " seconds..."
-                        )
-                        entryData["downloadedStreams"].pop(
-                            fileName,
-                            None,
-                        )
-                        os.remove(filePath)
+                )
+                isNewFormat = (
+                    entryData["isChild"] is False and fileName.count("-") == 4
+                ) or (
+                    (entryData["isChild"] is True and fileName.count("-") == 5)
+                    and childID in fileName
+                )
+                if isOldFormat:
+                    endTS = int(splitFileName[-1])
+                elif isNewFormat:
+                    isoPart = (
+                        fileName.replace(childID + "-", "") if childID else fileName
+                    )
+                    endTS = int(
+                        datetime.datetime.strptime(
+                            isoPart, "%Y-%m-%d_%H-%M-%S"
+                        ).timestamp()
+                    )
                 else:
                     LOGGER.debug(
                         "[deleteColdFilesOlderThanMaxSyncTime] Ignoring "
@@ -458,6 +465,29 @@ async def deleteColdFilesOlderThanMaxSyncTime(
                         + fileName
                         + ") because of incorrect file name format..."
                     )
+                    continue
+
+                last_modified = os.stat(filePath).st_mtime
+                if (endTS < (int(ts) - (int(mediaSyncTime) + timeCorrection))) and (
+                    ts - last_modified > int(mediaSyncTime)
+                ):
+                    LOGGER.debug(
+                        "[deleteColdFilesOlderThanMaxSyncTime] Removing "
+                        + filePath
+                        + " ("
+                        + fileName
+                        + ") because it's older than "
+                        + str(mediaSyncTime)
+                        + " seconds..."
+                    )
+                    entryData["downloadedStreams"].pop(
+                        fileName,
+                        None,
+                    )
+                    LOGGER.debug(
+                        "deleteColdFilesOlderThanMaxSyncTime - Removing %s", filePath
+                    )
+                    os.remove(filePath)
 
 
 async def mediaCleanup(hass, entry, deviceData):
@@ -491,12 +521,18 @@ async def mediaCleanup(hass, entry, deviceData):
     await deleteFilesNotIncluding(hass, hotDirPath + "/videos/", UUID)
     await deleteFilesNotIncluding(hass, hotDirPath + "/thumbs/", UUID)
 
-    await deleteFilesNoLongerPresentInCamera(
-        hass, entry_id, deviceData, ".mp4", "videos"
-    )
-    await deleteFilesNoLongerPresentInCamera(
-        hass, entry_id, deviceData, ".jpg", "thumbs"
-    )
+    if entry.data.get(MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA, True):
+        LOGGER.debug("Removing files that are not on camera anymore")
+        # await deleteFilesNoLongerPresentInCamera(
+        #     hass, entry_id, deviceData, ".mp4", "videos"
+        # )
+        # await deleteFilesNoLongerPresentInCamera(
+        #     hass, entry_id, deviceData, ".jpg", "thumbs"
+        # )
+    else:
+        LOGGER.debug(
+            "Not removing files that are not on camera anymore as requested by user"
+        )
 
     await deleteColdFilesOlderThanMaxSyncTime(hass, entry, deviceData, ".mp4", "videos")
     await deleteColdFilesOlderThanMaxSyncTime(hass, entry, deviceData, ".jpg", "thumbs")
@@ -535,7 +571,7 @@ async def deleteFilesOlderThan(hass: HomeAssistant, dirPath, deleteOlderThan):
             filePath = os.path.join(dirPath, f)
             last_modified = os.stat(filePath).st_mtime
             if now - last_modified > deleteOlderThan:
-                LOGGER.debug("[deleteFilesOlderThan] Removing " + filePath + "...")
+                LOGGER.debug("deleteFilesOlderThan - Removing %s", filePath)
                 os.remove(filePath)
 
 
@@ -545,7 +581,7 @@ async def deleteFilesNotIncluding(hass: HomeAssistant, dirPath, includingString)
         for f in listDirFiles:
             filePath = os.path.join(dirPath, f)
             if includingString not in filePath:
-                LOGGER.debug("[deleteFilesOlderThan] Removing " + filePath + "...")
+                LOGGER.debug("deleteFilesNotIncluding - Removing %s", filePath)
                 os.remove(filePath)
 
 
