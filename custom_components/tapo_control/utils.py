@@ -56,6 +56,7 @@ from .const import (
     CONF_CUSTOM_STREAM_SD,
     CONF_CUSTOM_STREAM_6,
     CONF_CUSTOM_STREAM_7,
+    MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA,
     MEDIA_SYNC_COLD_STORAGE_PATH,
     MEDIA_SYNC_HOURS,
     TIME_SYNC_DST,
@@ -369,36 +370,38 @@ async def deleteFilesNoLongerPresentInCamera(
     childID = ""
     if entryData["isChild"]:
         childID = entryData["camData"]["basic_info"]["dev_id"]
-    if entryData["initialMediaScanDone"] is True:
-        LOGGER.debug("deleteFilesNoLongerPresentInCamera - Initial scanning done.")
-        coldDirPath = getColdDirPathForEntry(hass, entry_id)
-        if os.path.exists(coldDirPath + "/" + folder + "/"):
-            LOGGER.debug("deleteFilesNoLongerPresentInCamera - path exists")
-            listDirFiles = await hass.async_add_executor_job(
-                os.listdir, coldDirPath + "/" + folder + "/"
+    if not entryData["initialMediaScanDone"]:
+        LOGGER.debug("deleteFilesNoLongerPresentInCamera - initialMediaScanDone hasn't completed yet")
+        return 
+    LOGGER.debug("deleteFilesNoLongerPresentInCamera - Initial scanning done.")
+    coldDirPath = getColdDirPathForEntry(hass, entry_id)
+    path = coldDirPath + "/" + folder + "/"
+    if not os.path.exists():
+        return
+        LOGGER.debug("deleteFilesNoLongerPresentInCamera - path %s does not exists", path)
+    LOGGER.debug("deleteFilesNoLongerPresentInCamera - path exists")
+    listDirFiles = await hass.async_add_executor_job(
+        os.listdir, path
+    )
+    for f in listDirFiles:
+        fileName = f.replace(extension, "")
+        filePath = os.path.join(path, f)
+        if (
+            (not entryData["isChild"] and fileName.count("-") == 1)
+            or (
+                (entryData["isChild"] and fileName.count("-") == 2)
+                and childID in fileName
             )
-            for f in listDirFiles:
-                fileName = f.replace(extension, "")
-                filePath = os.path.join(coldDirPath + "/" + folder + "/", f)
-                if (
-                    (entryData["isChild"] is False and fileName.count("-") == 1)
-                    or (
-                        (entryData["isChild"] is True and fileName.count("-") == 2)
-                        and childID in fileName
-                    )
-                ) and fileName not in entryData["mediaScanResult"]:
-                    LOGGER.debug(
-                        "[deleteFilesNoLongerPresentInCamera] Removing "
-                        + filePath
-                        + " ("
-                        + fileName
-                        + ")..."
-                    )
-                    entryData["downloadedStreams"].pop(
-                        fileName,
-                        None,
-                    )
-                    os.remove(filePath)
+        ) and fileName not in entryData["mediaScanResult"]:
+            LOGGER.debug(
+                "[deleteFilesNoLongerPresentInCamera] Removing %s (%s)...",
+                filePath, fileName
+            )
+            entryData["downloadedStreams"].pop(
+                fileName,
+                None,
+            )
+            os.remove(filePath)
 
 
 async def deleteColdFilesOlderThanMaxSyncTime(
@@ -491,12 +494,13 @@ async def mediaCleanup(hass, entry, deviceData):
     await deleteFilesNotIncluding(hass, hotDirPath + "/videos/", UUID)
     await deleteFilesNotIncluding(hass, hotDirPath + "/thumbs/", UUID)
 
-    await deleteFilesNoLongerPresentInCamera(
-        hass, entry_id, deviceData, ".mp4", "videos"
-    )
-    await deleteFilesNoLongerPresentInCamera(
-        hass, entry_id, deviceData, ".jpg", "thumbs"
-    )
+    if entry.data.get(MEDIA_CLEANUP_FILES_REMOVED_FROM_CAMERA, True):
+        await deleteFilesNoLongerPresentInCamera(
+            hass, entry_id, deviceData, ".mp4", "videos"
+        )
+        await deleteFilesNoLongerPresentInCamera(
+            hass, entry_id, deviceData, ".jpg", "thumbs"
+        )
 
     await deleteColdFilesOlderThanMaxSyncTime(hass, entry, deviceData, ".mp4", "videos")
     await deleteColdFilesOlderThanMaxSyncTime(hass, entry, deviceData, ".jpg", "thumbs")
