@@ -379,9 +379,13 @@ class TapoMotionSensor(BinarySensorEntity):
         LOGGER.debug("TapoMotionSensor - init - end")
 
     @property
+    def _event(self):
+        return self.events.get_uid(self._attr_unique_id)
+
+    @property
     def is_on(self) -> bool:
-        """Return true if the binary sensor is on."""
-        if (event := self.events.get_uid(self._attr_unique_id)) is not None:
+        event = self._event
+        if event is not None:
             return event.value
         return self._attr_is_on
 
@@ -391,7 +395,8 @@ class TapoMotionSensor(BinarySensorEntity):
 
     @property
     def device_class(self) -> Optional[str]:
-        if (event := self.events.get_uid(self._attr_unique_id)) is not None:
+        event = self._event
+        if event is not None:
             return event.device_class
         return self._attr_device_class
 
@@ -401,7 +406,8 @@ class TapoMotionSensor(BinarySensorEntity):
 
     @property
     def entity_registry_enabled_default(self) -> bool:
-        if (event := self.events.get_uid(self._attr_unique_id)) is not None:
+        event = self._event
+        if event is not None:
             return event.entity_enabled
         return self._attr_enabled
 
