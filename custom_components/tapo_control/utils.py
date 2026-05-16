@@ -376,7 +376,7 @@ async def deleteFilesNoLongerPresentInCamera(
     LOGGER.debug("deleteFilesNoLongerPresentInCamera - Initial scanning done.")
     coldDirPath = getColdDirPathForEntry(hass, entry_id)
     path = coldDirPath + "/" + folder + "/"
-    if not os.path.exists():
+    if not os.path.exists(path):
         return
         LOGGER.debug("deleteFilesNoLongerPresentInCamera - path %s does not exists", path)
     LOGGER.debug("deleteFilesNoLongerPresentInCamera - path exists")
