@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["custom_components"]
+
+[tool.coverage.run]
+source = ["custom_components.tapo_control"]

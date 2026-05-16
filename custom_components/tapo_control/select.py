@@ -999,29 +999,29 @@ class TapoDualCamLinkage(TapoSelectEntity):
 
     def updateTapo(self, camData):
         LOGGER.debug(f"TapoDualCamLinkage updateTapo 1")
-        LOGGER.debug(f"Enabled: {camData["dualCamLinkageEnabled"]}")
-        LOGGER.debug(f"Type: {camData["dualCamLinkageType"]}")
         if not camData:
             LOGGER.debug("TapoDualCamLinkage updateTapo 2")
             self._attr_state = STATE_UNAVAILABLE
+            return
+        LOGGER.debug(f"Enabled: {camData["dualCamLinkageEnabled"]}")
+        LOGGER.debug(f"Type: {camData["dualCamLinkageType"]}")
+        LOGGER.debug("TapoDualCamLinkage updateTapo 3")
+        if camData["dualCamLinkageEnabled"] == "off":
+            LOGGER.debug("TapoDualCamLinkage updateTapo 4")
+            self._attr_current_option = "off"
         else:
-            LOGGER.debug("TapoDualCamLinkage updateTapo 3")
-            if camData["dualCamLinkageEnabled"] == "off":
-                LOGGER.debug("TapoDualCamLinkage updateTapo 4")
-                self._attr_current_option = "off"
-            else:
-                LOGGER.debug("TapoDualCamLinkage updateTapo 5")
-                linkage_type = str(camData.get("dualCamLinkageType"))
-                self._attr_current_option = next(
-                    (
-                        option
-                        for option, value in self._options_map.items()
-                        if str(value) == linkage_type
-                    ),
-                    "off",
-                )
-            LOGGER.debug("TapoDualCamLinkage updateTapo 6")
-            self._attr_state = self._attr_current_option
+            LOGGER.debug("TapoDualCamLinkage updateTapo 5")
+            linkage_type = str(camData.get("dualCamLinkageType"))
+            self._attr_current_option = next(
+                (
+                    option
+                    for option, value in self._options_map.items()
+                    if str(value) == linkage_type
+                ),
+                "off",
+            )
+        LOGGER.debug("TapoDualCamLinkage updateTapo 6")
+        self._attr_state = self._attr_current_option
         LOGGER.debug("Updating TapoDualCamLinkage to: " + str(self._attr_state))
 
     async def async_select_option(self, option: str) -> None:
