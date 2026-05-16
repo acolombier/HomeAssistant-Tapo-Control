@@ -75,6 +75,7 @@ class TapoMediaSource(MediaSource):
         err_msg = str(err)
         if "-71105" in err_msg:
             return RECORDINGS_UNAVAILABLE_MESSAGE
+        LOGGER.warning("Unsuported recoding exception: %s (%s)", err_msg, repr(err))
         return "Unable to retrieve recordings, please try again later."
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry | None) -> None:
@@ -305,6 +306,8 @@ class TapoMediaSource(MediaSource):
                         entry_id,
                     )
                     continue
+                LOGGER.debug("Found media browsing: %s", repr(entry_data))
+                name = f"{name} ({entry_id})"
                 children.append(
                     self.generateView(
                         build_identifier({"entry": entry_id, "title": name}),

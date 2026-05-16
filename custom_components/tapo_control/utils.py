@@ -697,6 +697,7 @@ async def getRecording(
         )
 
         entryData["isDownloadingStream"] = True
+        LOGGER.info("Downloading %s...", coldFilePath)
         downloadedFile = await downloader.downloadFile(
             processDownloadStatus(
                 entryData,
@@ -712,6 +713,7 @@ async def getRecording(
         entryData["isDownloadingStream"] = False
         if downloadedFile["currentAction"] == "Recording in progress":
             raise Unresolvable("Recording is currently in progress.")
+        LOGGER.info("Downloaded %s. Emitting event %s", coldFilePath, entry_id)
 
         hass.bus.fire(
             "tapo_control_media_downloaded",
