@@ -327,41 +327,16 @@ class TapoCamEntity(Camera):
             self._attr_extra_state_attributes["presets"] = camData["presets"]
             if camData["recordPlan"]:
                 self._attr_extra_state_attributes["record_plan"] = {
-                    "sunday": (
-                        camData["recordPlan"]["sunday"]
-                        if "sunday" in camData["recordPlan"]
-                        else None
-                    ),
-                    "monday": (
-                        camData["recordPlan"]["monday"]
-                        if "monday" in camData["recordPlan"]
-                        else None
-                    ),
-                    "tuesday": (
-                        camData["recordPlan"]["tuesday"]
-                        if "tuesday" in camData["recordPlan"]
-                        else None
-                    ),
-                    "wednesday": (
-                        camData["recordPlan"]["wednesday"]
-                        if "wednesday" in camData["recordPlan"]
-                        else None
-                    ),
-                    "thursday": (
-                        camData["recordPlan"]["thursday"]
-                        if "thursday" in camData["recordPlan"]
-                        else None
-                    ),
-                    "friday": (
-                        camData["recordPlan"]["friday"]
-                        if "friday" in camData["recordPlan"]
-                        else None
-                    ),
-                    "saturday": (
-                        camData["recordPlan"]["saturday"]
-                        if "saturday" in camData["recordPlan"]
-                        else None
-                    ),
+                    day: camData["recordPlan"].get(day)
+                    for day in (
+                        "sunday",
+                        "monday",
+                        "tuesday",
+                        "wednesday",
+                        "thursday",
+                        "friday",
+                        "saturday",
+                    )
                 }
 
     async def async_enable_motion_detection(self):
