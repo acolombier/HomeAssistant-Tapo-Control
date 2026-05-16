@@ -2143,54 +2143,34 @@ def build_device_info(attributes: dict) -> DeviceInfo:
     )
 
 
+PYTAPO_FUNCTION_MAP = {
+    "getPrivacyMode": ["getLensMaskConfig"],
+    "getNotificationsEnabled": ["getMsgPushConfig"],
+    "getBasicInfo": ["getDeviceInfo"],
+    "getMotionDetection": ["getDetectionConfig"],
+    "getPersonDetection": ["getPersonDetectionConfig"],
+    "getVehicleDetection": ["getVehicleDetectionConfig"],
+    "getBabyCryDetection": ["getBCDConfig"],
+    "getPetDetection": ["getPetDetectionConfig"],
+    "getBarkDetection": ["getBarkDetectionConfig"],
+    "getMeowDetection": ["getMeowDetectionConfig"],
+    "getGlassBreakDetection": ["getGlassDetectionConfig"],
+    "getTamperDetection": ["getTamperDetectionConfig"],
+    "getLdc": ["getLensDistortionCorrection"],
+    "getAlarm": ["getLastAlarmInfo", "getAlarmConfig"],
+    "getLED": ["getLedStatus"],
+    "getAutoTrackTarget": ["getTargetTrackConfig"],
+    "getPresets": ["getPresetConfig"],
+    "getLightFrequencyMode": ["getLightFrequencyInfo", "getLightFrequencyCapability"],
+    "getChildDevices": ["getChildDeviceList"],
+    "getForceWhitelampState": ["getLdc"],
+    "getDayNightMode": ["getLightFrequencyInfo", "getNightVisionModeConfig"],
+    "getImageFlipVertical": ["getRotationStatus", "getLdc"],
+    "getLensDistortionCorrection": ["getLdc"],
+}
+
 def pytapoFunctionMap(pytapoFunctionName):
-    if pytapoFunctionName == "getPrivacyMode":
-        return ["getLensMaskConfig"]
-    elif pytapoFunctionName == "getNotificationsEnabled":
-        return ["getMsgPushConfig"]
-    elif pytapoFunctionName == "getBasicInfo":
-        return ["getDeviceInfo"]
-    elif pytapoFunctionName == "getMotionDetection":
-        return ["getDetectionConfig"]
-    elif pytapoFunctionName == "getPersonDetection":
-        return ["getPersonDetectionConfig"]
-    elif pytapoFunctionName == "getVehicleDetection":
-        return ["getVehicleDetectionConfig"]
-    elif pytapoFunctionName == "getBabyCryDetection":
-        return ["getBCDConfig"]
-    elif pytapoFunctionName == "getPetDetection":
-        return ["getPetDetectionConfig"]
-    elif pytapoFunctionName == "getBarkDetection":
-        return ["getBarkDetectionConfig"]
-    elif pytapoFunctionName == "getMeowDetection":
-        return ["getMeowDetectionConfig"]
-    elif pytapoFunctionName == "getGlassBreakDetection":
-        return ["getGlassDetectionConfig"]
-    elif pytapoFunctionName == "getTamperDetection":
-        return ["getTamperDetectionConfig"]
-    elif pytapoFunctionName == "getLdc":
-        return ["getLensDistortionCorrection"]
-    elif pytapoFunctionName == "getAlarm":
-        return ["getLastAlarmInfo", "getAlarmConfig"]
-    elif pytapoFunctionName == "getLED":
-        return ["getLedStatus"]
-    elif pytapoFunctionName == "getAutoTrackTarget":
-        return ["getTargetTrackConfig"]
-    elif pytapoFunctionName == "getPresets":
-        return ["getPresetConfig"]
-    elif pytapoFunctionName == "getLightFrequencyMode":
-        return ["getLightFrequencyInfo", "getLightFrequencyCapability"]
-    elif pytapoFunctionName == "getChildDevices":
-        return ["getChildDeviceList"]
-    elif pytapoFunctionName == "getForceWhitelampState":
-        return ["getLdc"]
-    elif pytapoFunctionName == "getDayNightMode":
-        return ["getLightFrequencyInfo", "getNightVisionModeConfig"]
-    elif pytapoFunctionName == "getImageFlipVertical":
-        return ["getRotationStatus", "getLdc"]
-    elif pytapoFunctionName == "getLensDistortionCorrection":
-        return ["getLdc"]
-    return [pytapoFunctionName]
+    return PYTAPO_FUNCTION_MAP.get(pytapoFunctionName, [pytapoFunctionName])
 
 
 def isCacheSupported(check_function, rawData):
