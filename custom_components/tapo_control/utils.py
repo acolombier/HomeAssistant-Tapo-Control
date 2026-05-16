@@ -240,10 +240,12 @@ async def getRecordings(hass, entryData, tapoController, date):
             for recording in recordingsForDay:
                 for recordingKey in recording:
                     entryData["mediaScanResult"][
-                        ((childID + "-") if childID != "" else "")
-                        + str(recording[recordingKey]["startTime"])
-                        + "-"
-                        + str(recording[recordingKey]["endTime"])
+                        getFileName(
+                            recording[recordingKey]["startTime"],
+                            recording[recordingKey]["endTime"],
+                            False,
+                            childID=childID,
+                        )
                     ] = True
     except Exception as err:
         if "-71105" in str(err):
@@ -291,10 +293,12 @@ async def findMedia(hass, entryData, entry):
                         childID=childID,
                     )
                     mediaScanResult[
-                        ((childID + "-") if childID != "" else "")
-                        + str(recording[recordingKey]["startTime"])
-                        + "-"
-                        + str(recording[recordingKey]["endTime"])
+                        getFileName(
+                            recording[recordingKey]["startTime"],
+                            recording[recordingKey]["endTime"],
+                            False,
+                            childID=childID,
+                        )
                     ] = True
                     if os.path.exists(filePathVideo):
                         await processDownload(
@@ -331,9 +335,7 @@ async def processDownload(
             startDate: startDate,
             endDate: endDate,
         }
-    mediaScanName = (
-        ((childID + "-") if childID != "" else "") + str(startDate) + "-" + str(endDate)
-    )
+    mediaScanName = getFileName(startDate, endDate, False, childID=childID)
     if mediaScanName not in entryData["mediaScanResult"]:
         entryData["mediaScanResult"][mediaScanName] = True
 
@@ -394,7 +396,8 @@ async def deleteFilesNoLongerPresentInCamera(
                 (entryData["isChild"] and fileName.count("-") >= 2)
                 and childID in fileName
             )
-        ) and fileName not in entryData["mediaScanResult"]:
+            and fileName not in entryData["mediaScanResult"]
+        ):
             LOGGER.debug(
                 "[deleteFilesNoLongerPresentInCamera] Removing %s (%s)...",
                 filePath,
@@ -435,16 +438,18 @@ async def deleteColdFilesOlderThanMaxSyncTime(
                 filePath = os.path.join(coldDirPath + "/" + folder + "/", f)
                 splitFileName = fileName.split("-")
                 isOldFormat = (
-                    entryData["isChild"] is False and fileName.count("-") == 1
-                ) or (
-                    (entryData["isChild"] is True and fileName.count("-") == 2)
-                    and childID in fileName
+                    (entryData["isChild"] is False and fileName.count("-") == 1)
+                    or (
+                        (entryData["isChild"] is True and fileName.count("-") == 2)
+                        and childID in fileName
+                    )
                 )
                 isNewFormat = (
-                    entryData["isChild"] is False and fileName.count("-") == 4
-                ) or (
-                    (entryData["isChild"] is True and fileName.count("-") == 5)
-                    and childID in fileName
+                    (entryData["isChild"] is False and fileName.count("-") == 4)
+                    or (
+                        (entryData["isChild"] is True and fileName.count("-") == 5)
+                        and childID in fileName
+                    )
                 )
                 if isOldFormat:
                     endTS = int(splitFileName[-1])
@@ -615,18 +620,30 @@ def processDownloadStatus(
     return processUpdate
 
 
+def _getOldFileName(startDate: int, endDate: int, childID=""):
+    return (
+        ((str(childID) + "-") if childID != "" else "")
+        + str(startDate)
+        + "-"
+        + str(endDate)
+    )
+
+
 def getFileName(startDate: int, endDate: int, encrypted=False, childID=""):
+    startDate = int(startDate)
+    endDate = int(endDate)
     if encrypted:
         return hashlib.md5(
             (str(childID) + str(startDate) + str(endDate)).encode()
         ).hexdigest()
     else:
-        return (
-            ((str(childID) + "-") if childID != "" else "")
-            + str(startDate)
-            + "-"
-            + str(endDate)
-        )
+        prefix = (str(childID) + "-") if childID != "" else ""
+        if startDate > 0:
+            return prefix + datetime.datetime.fromtimestamp(
+                startDate, tz=datetime.timezone.utc
+            ).strftime("%Y-%m-%d_%H-%M-%S")
+        else:
+            return prefix + str(startDate) + "-" + str(endDate)
 
 
 def getColdFile(
@@ -639,6 +656,7 @@ def getColdFile(
 ):
     coldDirPath = getColdDirPathForEntry(hass, entry_id)
     fileName = getFileName(startDate, endDate, False, childID=childID)
+    oldFileName = _getOldFileName(startDate, endDate, childID=childID)
 
     if folder == "videos":
         extension = ".mp4"
@@ -646,7 +664,14 @@ def getColdFile(
         extension = ".jpg"
     else:
         raise Unresolvable("Incorrect folder specified: " + folder)
-    return coldDirPath + "/" + folder + "/" + fileName + extension
+
+    coldFilePath = coldDirPath + "/" + folder + "/" + fileName + extension
+    oldColdFilePath = coldDirPath + "/" + folder + "/" + oldFileName + extension
+
+    if os.path.exists(oldColdFilePath):
+        return oldColdFilePath
+
+    return coldFilePath
 
 
 async def getHotFile(
