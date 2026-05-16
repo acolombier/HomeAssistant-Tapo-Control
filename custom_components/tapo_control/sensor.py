@@ -106,9 +106,6 @@ class TapoRSSISensor(TapoSensorEntity):
             None,
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     def updateTapo(self, camData: dict | None) -> None:
         """Update the entity."""
         if (

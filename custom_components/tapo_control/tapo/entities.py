@@ -60,6 +60,9 @@ class TapoEntity(Entity):
     async def async_will_remove_from_hass(self) -> None:
         self._enabled = False
 
+    async def async_update(self) -> None:
+        await self._coordinator.async_request_refresh()
+
     def updateTapo(self, camData):
         pass
 
@@ -107,6 +110,7 @@ class TapoSwitchEntity(SwitchEntity, TapoEntity):
         config_entry,
         icon=None,
         device_class=None,
+        on_method_name=None,
     ):
         LOGGER.debug(f"Tapo {name_suffix} - init - start")
         self._attr_is_on = False
@@ -114,12 +118,31 @@ class TapoSwitchEntity(SwitchEntity, TapoEntity):
         self._attr_icon = icon
         self._config_entry = config_entry
         self._attr_device_class = device_class
+        self._on_method_name = on_method_name
         entry["entities"].append({"entity": self, "entry": entry})
         self.updateTapo(entry["camData"])
 
         TapoEntity.__init__(self, entry, name_suffix)
         SwitchEntity.__init__(self)
         LOGGER.debug(f"Tapo {name_suffix} - init - end")
+
+    async def _async_set_switch(self, method, *args):
+        value = next((a for a in reversed(args) if isinstance(a, bool)), True)
+        result = await self._hass.async_add_executor_job(method, *args)
+        if "error_code" not in result or result["error_code"] == 0:
+            self._attr_state = "on" if value else "off"
+        self.async_write_ha_state()
+        await self._coordinator.async_request_refresh()
+
+    async def async_turn_on(self, **kwargs):
+        if self._on_method_name:
+            method = getattr(self._controller, self._on_method_name)
+            await self._async_set_switch(method, True)
+
+    async def async_turn_off(self, **kwargs):
+        if self._on_method_name:
+            method = getattr(self._controller, self._on_method_name)
+            await self._async_set_switch(method, False)
 
     @property
     def entity_category(self):
@@ -271,6 +294,64 @@ class TapoSelectEntity(SelectEntity, TapoEntity):
         return self._attr_state
 
 
+class TapoDetectionSelect(TapoSelectEntity):
+    def __init__(
+        self,
+        name_suffix,
+        entry,
+        hass,
+        config_entry,
+        icon,
+        device_class,
+        enabled_key,
+        sensitivity_key,
+        method_name,
+        supports_channels=False,
+        specific_name=None,
+        chn_id=None,
+    ):
+        self._attr_options = ["high", "normal", "low", "off"]
+        self._attr_current_option = None
+        self.chn_id = chn_id
+        self.read_chn_id = str(chn_id) if chn_id else "1"
+        self._enabled_key = enabled_key
+        self._sensitivity_key = sensitivity_key
+        self._method_name = method_name
+        self._supports_channels = supports_channels
+        display_name = f"{name_suffix}{' - ' + specific_name if specific_name else ''}"
+        TapoSelectEntity.__init__(
+            self, display_name, entry, hass, config_entry, icon, device_class
+        )
+
+    def updateTapo(self, camData):
+        if not camData:
+            self._attr_state = STATE_UNAVAILABLE
+            return
+
+        enabled = camData[self._enabled_key]
+        sensitivity = camData[self._sensitivity_key]
+        if isinstance(enabled, dict):
+            enabled = enabled.get(self.read_chn_id)
+        if isinstance(sensitivity, dict):
+            sensitivity = sensitivity.get(self.read_chn_id)
+        if enabled == "off":
+            self._attr_current_option = "off"
+        else:
+            self._attr_current_option = sensitivity
+        self._attr_state = self._attr_current_option
+
+    async def async_select_option(self, option: str) -> None:
+        method = getattr(self._controller, self._method_name)
+        args = [option != "off", option if option != "off" else False]
+        if self._supports_channels:
+            args.append([self.chn_id] if self.chn_id else None)
+        result = await self.hass.async_add_executor_job(method, *args)
+        if "error_code" not in result or result["error_code"] == 0:
+            self._attr_state = option
+        self.async_write_ha_state()
+        await self._coordinator.async_request_refresh()
+
+
 class TapoNumberEntity(NumberEntity, TapoEntity):
     def __init__(
         self,
@@ -280,11 +361,13 @@ class TapoNumberEntity(NumberEntity, TapoEntity):
         config_entry,
         icon=None,
         device_class=None,
+        on_method_name=None,
     ):
         LOGGER.debug(f"Tapo {name_suffix} - init - start")
         self._hass = hass
         self._attr_icon = icon
         self._attr_device_class = device_class
+        self._on_method_name = on_method_name
         LOGGER.debug(f"Tapo {name_suffix} - init - append")
         entry["entities"].append({"entity": self, "entry": entry})
         LOGGER.debug(f"Tapo {name_suffix} - init - update")
@@ -295,6 +378,23 @@ class TapoNumberEntity(NumberEntity, TapoEntity):
         LOGGER.debug(f"Tapo {name_suffix} - init - NumberEntity")
         NumberEntity.__init__(self)
         LOGGER.debug(f"Tapo {name_suffix} - init - end")
+
+    @property
+    def entity_category(self):
+        return EntityCategory.CONFIG
+
+    async def _async_set_number(self, method, *args):
+        value = next((a for a in reversed(args) if isinstance(a, (int, float))), None)
+        result = await self._hass.async_add_executor_job(method, *args)
+        if "error_code" not in result or result["error_code"] == 0:
+            self._attr_state = value
+        self.async_write_ha_state()
+        await self._coordinator.async_request_refresh()
+
+    async def async_set_native_value(self, value: float) -> None:
+        if self._on_method_name:
+            method = getattr(self._controller, self._on_method_name)
+            await self._async_set_number(method, value)
 
     @property
     def entity_category(self):

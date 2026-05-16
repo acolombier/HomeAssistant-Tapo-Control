@@ -591,7 +591,7 @@ class TestTapoAlarmEventTypeSwitch:
         controller.setAlertEventType.assert_called_once_with("motion", False)
 
     @pytest.mark.asyncio
-    async def test_turn_off_sets_state_to_on_bug(self):
+    async def test_turn_off_sets_state_to_off(self):
         controller = MagicMock()
         controller.setAlertEventType = MagicMock(return_value={"error_code": 0})
         entry = make_entry(controller=controller)
@@ -601,7 +601,7 @@ class TestTapoAlarmEventTypeSwitch:
         switch.async_write_ha_state = MagicMock()
         switch._hass.async_add_executor_job = AsyncMock(side_effect=_run_job)
         await switch.async_turn_off()
-        assert switch._attr_state == "on"
+        assert switch._attr_state == "off"
 
     def test_updateTapo_event_enabled(self):
         entry = make_entry()

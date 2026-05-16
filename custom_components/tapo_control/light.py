@@ -109,9 +109,6 @@ class TapoWhitelight(TapoLightEntity):
         )
         LOGGER.debug("TapoWhitelight - init - end")
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
         LOGGER.debug("Turning on light")
         camData = self._entry["camData"]
@@ -201,9 +198,6 @@ class TapoFloodlightModern(TapoLightEntity):
             255 - 1
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self, **kwargs) -> None:
         LOGGER.debug("Turning on light")
         if ATTR_BRIGHTNESS in kwargs:
@@ -292,9 +286,6 @@ class TapoFloodlight(TapoLightEntity):
             "mdi:light-flood-down",
         )
         LOGGER.debug("TapoFloodlight - init - end")
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
 
     async def async_turn_on(self) -> None:
         LOGGER.debug("Turning on light")

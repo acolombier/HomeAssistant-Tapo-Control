@@ -195,9 +195,6 @@ class TapoChimeVolumePlay(RestoreNumber, TapoEntity):
         RestoreNumber.__init__(self)
         LOGGER.debug("TapoChimeVolumePlay - init - end")
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     @property
     def entity_category(self):
         return EntityCategory.CONFIG
@@ -235,9 +232,6 @@ class TapoChimeDurationPlay(RestoreNumber, TapoEntity):
         RestoreNumber.__init__(self)
         LOGGER.debug("TapoChimeDurationPlay - init - end")
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     @property
     def entity_category(self):
         return EntityCategory.CONFIG
@@ -267,9 +261,6 @@ class TapoMovementAngle(RestoreNumber, TapoEntity):
         TapoEntity.__init__(self, entry, "Movement Angle")
         RestoreNumber.__init__(self)
         LOGGER.debug("TapoMovementAngle - init - end")
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
 
     @property
     def entity_category(self):
@@ -315,24 +306,13 @@ class TapoMotionDetectionDigitalSensitivity(TapoNumberEntity):
             "mdi:motion-sensor",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
-
     async def async_set_native_value(self, value: float) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_number(
             self._controller.setMotionDetection,
             None,
             int(value),
             [self.chn_id] if self.chn_id else None,
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = value
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -370,17 +350,10 @@ class TapoChimeDuration(TapoNumberEntity):
             "mdi:dots-horizontal-circle",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
-
     async def async_set_native_value(self, value: float) -> None:
         if value < 5:
             value = 0
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_number(
             self._controller.setChimeAlarmConfigure,
             self.macAddress,
             None,
@@ -388,10 +361,6 @@ class TapoChimeDuration(TapoNumberEntity):
             None,
             int(value),
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = value
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if (
@@ -432,25 +401,14 @@ class TapoChimeVolume(TapoNumberEntity):
             "mdi:volume-high",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
-
     async def async_set_native_value(self, value: float) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_number(
             self._controller.setChimeAlarmConfigure,
             self.macAddress,
             None,
             None,
             int(value),
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = value
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if (
@@ -482,23 +440,11 @@ class TapoMicrophoneVolume(TapoNumberEntity):
             hass,
             config_entry,
             "mdi:microphone",
+            on_method_name="setMicrophone",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
 
     async def async_set_native_value(self, value: float) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setMicrophone, int(value)
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = value
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        await super().async_set_native_value(int(value))
 
     def updateTapo(self, camData):
         if not camData:
@@ -524,23 +470,11 @@ class TapoSpeakerVolume(TapoNumberEntity):
             hass,
             config_entry,
             "mdi:speaker",
+            on_method_name="setSpeakerVolume",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
 
     async def async_set_native_value(self, value: float) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setSpeakerVolume, int(value)
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = value
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        await super().async_set_native_value(int(value))
 
     def updateTapo(self, camData):
         if not camData:
@@ -576,9 +510,6 @@ class TapoSirenVolume(TapoNumberEntity):
             "mdi:volume-high",
         )
         LOGGER.debug("TapoSirenVolume - init - end")
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
 
     @property
     def entity_category(self):
@@ -660,21 +591,10 @@ class TapoFloodlightBrightness(TapoNumberEntity):
         )
         LOGGER.debug("TapoFloodlightBrightness - init - end")
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
-
     async def async_set_native_value(self, value: float) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_number(
             self._controller.setFloodlightConfig, None, None, None, None, int(value)
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = int(value)
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -757,24 +677,13 @@ class TapoSpotlightIntensity(TapoNumberEntity):
         )
         LOGGER.debug("TapoSpotlightIntensity - init - end")
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    @property
-    def entity_category(self):
-        return EntityCategory.CONFIG
-
     async def async_set_native_value(self, value: float) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_number(
             self._controller.setWhitelampConfig,
             False,
             int(value),
             [self.chn_id] if self.chn_id else None,
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = value
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -818,9 +727,6 @@ class TapoSirenDuration(TapoNumberEntity):
             "mdi:clock-end",
         )
         LOGGER.debug("TapoSirenDuration - init - end")
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
 
     @property
     def entity_category(self):

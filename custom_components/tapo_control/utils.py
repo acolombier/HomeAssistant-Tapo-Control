@@ -26,6 +26,7 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.ffmpeg import DATA_FFMPEG
+
 try:
     # Home Assistant moved EventManager from `event` to `event_manager` in 2026.5.
     from homeassistant.components.onvif.event_manager import EventManager
@@ -2168,6 +2169,7 @@ PYTAPO_FUNCTION_MAP = {
     "getImageFlipVertical": ["getRotationStatus", "getLdc"],
     "getLensDistortionCorrection": ["getLdc"],
 }
+
 
 def pytapoFunctionMap(pytapoFunctionName):
     return PYTAPO_FUNCTION_MAP.get(pytapoFunctionName, [pytapoFunctionName])

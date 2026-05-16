@@ -376,26 +376,15 @@ class TapoChimeRingtoneSwitch(TapoSwitchEntity):
             "mdi:bell-ring",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_switch(
             self._controller.setChimeAlarmConfigure, self.macAddress, True
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_switch(
             self._controller.setChimeAlarmConfigure, self.macAddress, False
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if (
@@ -428,30 +417,19 @@ class TapoDualLinkageTargetSwitch(TapoSwitchEntity):
             config_entry,
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_switch(
             self._controller.setLinkageTargetSetting,
             f"{self.target_type}_enabled",
             True,
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_switch(
             self._controller.setLinkageTargetSetting,
             f"{self.target_type}_enabled",
             False,
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if (
@@ -477,30 +455,8 @@ class TapoHDRSwitch(TapoSwitchEntity):
             hass,
             config_entry,
             "mdi:hdr",
+            on_method_name="setHDR",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setHDR,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setHDR,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if (
@@ -525,30 +481,8 @@ class TapoRecordingPlanSwitch(TapoSwitchEntity):
             hass,
             config_entry,
             "mdi:record-rec",
+            on_method_name="setRecordPlan",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setRecordPlan,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setRecordPlan,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData or "enabled" not in camData["recordPlan"]:
@@ -569,30 +503,11 @@ class TapoMicrophoneMuteSwitch(TapoSwitchEntity):
             "mdi:microphone-off",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setMicrophone,
-            None,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        await self._async_set_switch(self._controller.setMicrophone, None, True)
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setMicrophone,
-            None,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        await self._async_set_switch(self._controller.setMicrophone, None, False)
 
     def updateTapo(self, camData):
         if not camData or "microphoneMute" not in camData:
@@ -613,29 +528,11 @@ class TapoMicrophoneNoiseCancellationSwitch(TapoSwitchEntity):
             "mdi:microphone-settings",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setMicrophone, None, None, True
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        await self._async_set_switch(self._controller.setMicrophone, None, None, True)
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setMicrophone,
-            None,
-            None,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        await self._async_set_switch(self._controller.setMicrophone, None, None, False)
 
     def updateTapo(self, camData):
         if not camData or "microphoneNoiseCancelling" not in camData:
@@ -654,30 +551,8 @@ class TapoNotificationsSwitch(TapoSwitchEntity):
             hass,
             config_entry,
             "mdi:bell",
+            on_method_name="setNotificationsEnabled",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setNotificationsEnabled,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setNotificationsEnabled,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -696,30 +571,8 @@ class TapoAutoUpgradeSwitch(TapoSwitchEntity):
             hass,
             config_entry,
             "mdi:cloud-download",
+            on_method_name="setFirmwareAutoUpgradeConfig",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setFirmwareAutoUpgradeConfig,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setFirmwareAutoUpgradeConfig,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -740,30 +593,15 @@ class TapoRichNotificationsSwitch(TapoSwitchEntity):
             "mdi:bell",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setNotificationsEnabled,
-            None,
-            True,
+        await self._async_set_switch(
+            self._controller.setNotificationsEnabled, None, True
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setNotificationsEnabled,
-            None,
-            False,
+        await self._async_set_switch(
+            self._controller.setNotificationsEnabled, None, False
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -785,30 +623,15 @@ class TapoAlarmEventTypeSwitch(TapoSwitchEntity):
             "mdi:exclamation",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setAlertEventType,
-            self.eventType,
-            True,
+        await self._async_set_switch(
+            self._controller.setAlertEventType, self.eventType, True
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setAlertEventType,
-            self.eventType,
-            False,
+        await self._async_set_switch(
+            self._controller.setAlertEventType, self.eventType, False
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -841,30 +664,19 @@ class TapoLensDistortionCorrectionSwitch(TapoSwitchEntity):
             "mdi:google-lens",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_switch(
             self._controller.setLensDistortionCorrection,
             True,
             [self.chn_id] if self.chn_id else None,
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_switch(
             self._controller.setLensDistortionCorrection,
             False,
             [self.chn_id] if self.chn_id else None,
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -879,30 +691,14 @@ class TapoLensDistortionCorrectionSwitch(TapoSwitchEntity):
 
 class TapoPrivacySwitch(TapoSwitchEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        TapoSwitchEntity.__init__(self, "Privacy", entry, hass, config_entry)
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setPrivacyMode,
-            True,
+        TapoSwitchEntity.__init__(
+            self,
+            "Privacy",
+            entry,
+            hass,
+            config_entry,
+            on_method_name="setPrivacyMode",
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setPrivacyMode,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -943,30 +739,15 @@ class TapoSmartTrackSwitch(TapoSwitchEntity):
             "mdi:eye-lock",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setSmartTrackConfig,
-            self.typeOfSmartTrack,
-            True,
+        await self._async_set_switch(
+            self._controller.setSmartTrackConfig, self.typeOfSmartTrack, True
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setSmartTrackConfig,
-            self.typeOfSmartTrack,
-            False,
+        await self._async_set_switch(
+            self._controller.setSmartTrackConfig, self.typeOfSmartTrack, False
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -981,31 +762,14 @@ class TapoSmartTrackSwitch(TapoSwitchEntity):
 class TapoCoverSwitch(TapoSwitchEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
         TapoSwitchEntity.__init__(
-            self, "Privacy Zones", entry, hass, config_entry, "mdi:eye-lock"
+            self,
+            "Privacy Zones",
+            entry,
+            hass,
+            config_entry,
+            "mdi:eye-lock",
+            on_method_name="setCoverConfig",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setCoverConfig,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setCoverConfig,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -1018,31 +782,14 @@ class TapoCoverSwitch(TapoSwitchEntity):
 class TapoDiagnoseModeSwitch(TapoSwitchEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
         TapoSwitchEntity.__init__(
-            self, "Diagnose Mode", entry, hass, config_entry, "mdi:tools"
+            self,
+            "Diagnose Mode",
+            entry,
+            hass,
+            config_entry,
+            "mdi:tools",
+            on_method_name="setDiagnoseMode",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setDiagnoseMode,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setDiagnoseMode,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -1055,31 +802,14 @@ class TapoDiagnoseModeSwitch(TapoSwitchEntity):
 class TapoRecordAudioSwitch(TapoSwitchEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
         TapoSwitchEntity.__init__(
-            self, "Record Audio", entry, hass, config_entry, "mdi:microphone"
+            self,
+            "Record Audio",
+            entry,
+            hass,
+            config_entry,
+            "mdi:microphone",
+            on_method_name="setRecordAudio",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setRecordAudio,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setRecordAudio,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -1092,31 +822,14 @@ class TapoRecordAudioSwitch(TapoSwitchEntity):
 class TapoIndicatorLedSwitch(TapoSwitchEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
         TapoSwitchEntity.__init__(
-            self, "Indicator LED", entry, hass, config_entry, "mdi:car-light-high"
+            self,
+            "Indicator LED",
+            entry,
+            hass,
+            config_entry,
+            "mdi:car-light-high",
+            on_method_name="setLEDEnabled",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setLEDEnabled,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setLEDEnabled,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -1146,30 +859,19 @@ class TapoFlipSwitch(TapoSwitchEntity):
             "mdi:flip-vertical",
         )
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_switch(
             self._controller.setImageFlipVertical,
             True,
             [self.chn_id] if self.chn_id else None,
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
+        await self._async_set_switch(
             self._controller.setImageFlipVertical,
             False,
             [self.chn_id] if self.chn_id else None,
         )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:
@@ -1185,31 +887,14 @@ class TapoFlipSwitch(TapoSwitchEntity):
 class TapoAutoTrackSwitch(TapoSwitchEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
         TapoSwitchEntity.__init__(
-            self, "Auto Track", entry, hass, config_entry, "mdi:radar"
+            self,
+            "Auto Track",
+            entry,
+            hass,
+            config_entry,
+            "mdi:radar",
+            on_method_name="setAutoTrackTarget",
         )
-
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_on(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setAutoTrackTarget,
-            True,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "on"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
-
-    async def async_turn_off(self) -> None:
-        result = await self._hass.async_add_executor_job(
-            self._controller.setAutoTrackTarget,
-            False,
-        )
-        if "error_code" not in result or result["error_code"] == 0:
-            self._attr_state = "off"
-        self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
 
     def updateTapo(self, camData):
         if not camData:

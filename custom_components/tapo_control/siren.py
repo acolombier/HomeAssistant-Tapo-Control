@@ -72,9 +72,6 @@ class TapoSiren(TapoSirenEntity):
         self._turn_off_task = None
         self.is_hub = entry["camData"]["alarm_is_hubSiren"]
 
-    async def async_update(self) -> None:
-        await self._coordinator.async_request_refresh()
-
     async def async_turn_on(self, duration: int | None = None, **kwargs) -> None:
         for kw in kwargs:
             LOGGER.debug(f"async_turn_on: Parameter '{kw}' not supported")
