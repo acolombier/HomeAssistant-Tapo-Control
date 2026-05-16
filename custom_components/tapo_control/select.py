@@ -25,6 +25,57 @@ async def async_setup_entry(
 
     async def setupEntities(entry):
         selects = []
+        camData = entry["camData"]
+
+        def _add_with_channels(cls, name, **extra_kwargs):
+            if entry["chInfo"]:
+                for lens in entry["chInfo"]:
+                    chn_alias = lens.get("chn_alias", "")
+                    chn_id = lens.get("chn_id")
+                    LOGGER.debug(f"Adding {name} for {chn_alias}, id: {chn_id}...")
+                    selects.append(
+                        cls(
+                            entry, hass, config_entry, chn_alias, chn_id, **extra_kwargs
+                        )
+                    )
+            else:
+                LOGGER.debug(f"Adding {name}...")
+                selects.append(cls(entry, hass, config_entry, **extra_kwargs))
+
+        def _add_night_vision(cls, entity_name, options, value_key, method):
+            if entry["chInfo"]:
+                for lens in entry["chInfo"]:
+                    chn_alias = lens.get("chn_alias", "")
+                    chn_id = lens.get("chn_id")
+                    selects.append(
+                        cls(
+                            entry,
+                            hass,
+                            config_entry,
+                            entity_name,
+                            options,
+                            value_key,
+                            method,
+                            chn_alias,
+                            chn_id,
+                        )
+                    )
+                    LOGGER.debug(
+                        f"Adding {entity_name} for {chn_alias}, id: {chn_id}..."
+                    )
+            else:
+                LOGGER.debug(f"Adding {entity_name}...")
+                selects.append(
+                    cls(
+                        entry,
+                        hass,
+                        config_entry,
+                        entity_name,
+                        options,
+                        value_key,
+                        method,
+                    )
+                )
 
         tapoTimezoneSelect = await check_and_create(
             entry, hass, TapoTimezoneSelect, "getTimezone", config_entry
@@ -33,78 +84,28 @@ async def async_setup_entry(
             LOGGER.debug("Adding tapoTimezoneSelect...")
             selects.append(tapoTimezoneSelect)
 
-        if (
-            "night_vision_mode_switching" in entry["camData"]
-            and entry["camData"]["night_vision_mode_switching"] is not None
-        ):
-            if entry["chInfo"]:
-                for lens in entry["chInfo"]:
-                    chn_alias = lens.get("chn_alias", "")
-                    chn_id = lens.get("chn_id")
-                    tapoNightVisionSelect = TapoNightVisionSelect(
-                        entry,
-                        hass,
-                        config_entry,
-                        "Night Vision Switching",
-                        ["auto", "on", "off"],
-                        "night_vision_mode_switching",
-                        entry["controller"].setDayNightMode,
-                        chn_alias,
-                        chn_id,
-                    )
-                    LOGGER.debug(
-                        f"Adding tapoNightVisionSelect (Night Vision Switching) for {chn_alias}, id: {chn_id}..."
-                    )
-                    selects.append(tapoNightVisionSelect)
-            else:
-                tapoNightVisionSelect = TapoNightVisionSelect(
-                    entry,
-                    hass,
-                    config_entry,
-                    "Night Vision Switching",
-                    ["auto", "on", "off"],
-                    "night_vision_mode_switching",
-                    entry["controller"].setDayNightMode,
-                )
-                LOGGER.debug("Adding tapoNightVisionSelect (Night Vision Switching)...")
-                selects.append(tapoNightVisionSelect)
+        night_vision_switching = camData.get("night_vision_mode_switching")
+        if night_vision_switching is not None:
+            _add_night_vision(
+                TapoNightVisionSelect,
+                "Night Vision Switching",
+                ["auto", "on", "off"],
+                "night_vision_mode_switching",
+                entry["controller"].setDayNightMode,
+            )
 
+        night_vision_mode = camData.get("night_vision_mode")
         if (
-            "night_vision_mode" in entry["camData"]
-            and entry["camData"]["night_vision_mode"] is not None
-            and entry["camData"]["night_vision_capability"] is not None
+            night_vision_mode is not None
+            and camData.get("night_vision_capability") is not None
         ):
-            if entry["chInfo"]:
-                for lens in entry["chInfo"]:
-                    chn_alias = lens.get("chn_alias", "")
-                    chn_id = lens.get("chn_id")
-                    tapoNightVisionSelect = TapoNightVisionSelect(
-                        entry,
-                        hass,
-                        config_entry,
-                        "Night Vision",
-                        entry["camData"]["night_vision_capability"],
-                        "night_vision_mode",
-                        entry["controller"].setNightVisionModeConfig,
-                        chn_alias,
-                        chn_id,
-                    )
-                    LOGGER.debug(
-                        f"Adding tapoNightVisionSelect (Night Vision) for {chn_alias}, id: {chn_id}..."
-                    )
-                    selects.append(tapoNightVisionSelect)
-            else:
-                tapoNightVisionSelect = TapoNightVisionSelect(
-                    entry,
-                    hass,
-                    config_entry,
-                    "Night Vision",
-                    entry["camData"]["night_vision_capability"],
-                    "night_vision_mode",
-                    entry["controller"].setNightVisionModeConfig,
-                )
-                LOGGER.debug("Adding tapoNightVisionSelect (Night Vision)...")
-                selects.append(tapoNightVisionSelect)
+            _add_night_vision(
+                TapoNightVisionSelect,
+                "Night Vision",
+                camData["night_vision_capability"],
+                "night_vision_mode",
+                entry["controller"].setNightVisionModeConfig,
+            )
 
         tapoLightFrequencySelect = await check_and_create(
             entry, hass, TapoLightFrequencySelect, "getLightFrequencyMode", config_entry
@@ -152,21 +153,7 @@ async def async_setup_entry(
             entry, hass, TapoMotionDetectionSelect, "getMotionDetection"
         )
         if tapoMotionDetectionSelectAvailable:
-            if entry["chInfo"]:
-                for lens in entry["chInfo"]:
-                    chn_alias = lens.get("chn_alias", "")
-                    chn_id = lens.get("chn_id")
-                    LOGGER.debug(
-                        f"Adding TapoMotionDetectionSelect for {chn_alias}, id: {chn_id}..."
-                    )
-                    selects.append(
-                        TapoMotionDetectionSelect(
-                            entry, hass, config_entry, chn_alias, chn_id
-                        )
-                    )
-            else:
-                LOGGER.debug("Adding TapoMotionDetectionSelect...")
-                selects.append(TapoMotionDetectionSelect(entry, hass, config_entry))
+            _add_with_channels(TapoMotionDetectionSelect, "TapoMotionDetectionSelect")
 
         tapoDualCamLinkageSelectAvailable = await check_functionality(
             entry, hass, TapoDualCamLinkage, "getDualCamLinkage"
@@ -179,41 +166,13 @@ async def async_setup_entry(
             entry, hass, TapoPersonDetectionSelect, "getPersonDetection"
         )
         if tapoPersonDetectionSelectAvailable:
-            if entry["chInfo"]:
-                for lens in entry["chInfo"]:
-                    chn_alias = lens.get("chn_alias", "")
-                    chn_id = lens.get("chn_id")
-                    LOGGER.debug(
-                        f"Adding tapoPersonDetectionSelect for {chn_alias}, id: {chn_id}..."
-                    )
-                    selects.append(
-                        TapoPersonDetectionSelect(
-                            entry, hass, config_entry, chn_alias, chn_id
-                        )
-                    )
-            else:
-                LOGGER.debug("Adding tapoPersonDetectionSelect...")
-                selects.append(TapoPersonDetectionSelect(entry, hass, config_entry))
+            _add_with_channels(TapoPersonDetectionSelect, "tapoPersonDetectionSelect")
 
         tapoVehicleDetectionSelectAvailable = await check_functionality(
             entry, hass, TapoVehicleDetectionSelect, "getVehicleDetection"
         )
         if tapoVehicleDetectionSelectAvailable:
-            if entry["chInfo"]:
-                for lens in entry["chInfo"]:
-                    chn_alias = lens.get("chn_alias", "")
-                    chn_id = lens.get("chn_id")
-                    LOGGER.debug(
-                        f"Adding tapoVehicleDetectionSelect for {chn_alias}, id: {chn_id}..."
-                    )
-                    selects.append(
-                        TapoVehicleDetectionSelect(
-                            entry, hass, config_entry, chn_alias, chn_id
-                        )
-                    )
-            else:
-                LOGGER.debug("Adding tapoVehicleDetectionSelect...")
-                selects.append(TapoVehicleDetectionSelect(entry, hass, config_entry))
+            _add_with_channels(TapoVehicleDetectionSelect, "tapoVehicleDetectionSelect")
 
         tapoBabyCryDetectionSelect = await check_and_create(
             entry, hass, TapoBabyCryDetectionSelect, "getBabyCryDetection", config_entry
@@ -226,21 +185,7 @@ async def async_setup_entry(
             entry, hass, TapoPetDetectionSelect, "getPetDetection"
         )
         if tapoPetDetectionSelectAvailable:
-            if entry["chInfo"]:
-                for lens in entry["chInfo"]:
-                    chn_alias = lens.get("chn_alias", "")
-                    chn_id = lens.get("chn_id")
-                    LOGGER.debug(
-                        f"Adding tapoPetDetectionSelect for {chn_alias}, id: {chn_id}..."
-                    )
-                    selects.append(
-                        TapoPetDetectionSelect(
-                            entry, hass, config_entry, chn_alias, chn_id
-                        )
-                    )
-            else:
-                LOGGER.debug("Adding tapoPetDetectionSelect...")
-                selects.append(TapoPetDetectionSelect(entry, hass, config_entry))
+            _add_with_channels(TapoPetDetectionSelect, "tapoPetDetectionSelect")
 
         tapoBarkDetectionSelect = await check_and_create(
             entry, hass, TapoBarkDetectionSelect, "getBarkDetection", config_entry
@@ -271,21 +216,7 @@ async def async_setup_entry(
             entry, hass, TapoTamperDetectionSelect, "getTamperDetection"
         )
         if tapoTamperDetectionSelectAvailable:
-            if entry["chInfo"]:
-                for lens in entry["chInfo"]:
-                    chn_alias = lens.get("chn_alias", "")
-                    chn_id = lens.get("chn_id")
-                    LOGGER.debug(
-                        f"Adding tapoTamperDetectionSelect for {chn_alias}, id: {chn_id}..."
-                    )
-                    selects.append(
-                        TapoTamperDetectionSelect(
-                            entry, hass, config_entry, chn_alias, chn_id
-                        )
-                    )
-            else:
-                LOGGER.debug("Adding tapoTamperDetectionSelect...")
-                selects.append(TapoTamperDetectionSelect(entry, hass, config_entry))
+            _add_with_channels(TapoTamperDetectionSelect, "tapoTamperDetectionSelect")
 
         tapoMoveToPresetSelect = await check_and_create(
             entry, hass, TapoMoveToPresetSelect, "getPresets", config_entry
@@ -301,7 +232,8 @@ async def async_setup_entry(
             LOGGER.debug("Adding TapoPatrolModeSelect...")
             selects.append(tapoPatrolModeSelect)
 
-        if entry["camData"]["whitelampConfigForceTime"] is not None:
+        whitelamp_force_time = camData.get("whitelampConfigForceTime")
+        if whitelamp_force_time is not None:
             tapoWhitelampForceTimeSelectAvailable = await check_functionality(
                 entry, hass, TapoWhitelampForceTimeSelect, "getWhitelampConfig"
             )
@@ -310,7 +242,7 @@ async def async_setup_entry(
                     for lens in entry["chInfo"]:
                         chn_alias = lens.get("chn_alias", "")
                         chn_id = lens.get("chn_id")
-                        force_time = entry["camData"].get("whitelampConfigForceTime")
+                        force_time = camData.get("whitelampConfigForceTime")
                         if isinstance(force_time, dict) and (
                             str(chn_id) not in force_time
                             or force_time.get(str(chn_id)) is None
@@ -331,58 +263,31 @@ async def async_setup_entry(
                     )
 
         if (
-            entry["camData"]["whitelampConfigIntensity"] is not None
-            and entry["camData"]["smartwtl_digital_level"] is None
+            camData.get("whitelampConfigIntensity") is not None
+            and camData.get("smartwtl_digital_level") is None
         ):
             tapoWhitelampIntensityLevelSelectAvailable = await check_functionality(
                 entry, hass, TapoWhitelampIntensityLevelSelect, "getWhitelampConfig"
             )
             if tapoWhitelampIntensityLevelSelectAvailable:
-                if entry["chInfo"]:
-                    for lens in entry["chInfo"]:
-                        chn_alias = lens.get("chn_alias", "")
-                        chn_id = lens.get("chn_id")
-                        LOGGER.debug(
-                            f"Adding TapoWhitelampIntensityLevelSelect for {chn_alias}, id: {chn_id}..."
-                        )
-                        selects.append(
-                            TapoWhitelampIntensityLevelSelect(
-                                entry, hass, config_entry, chn_alias, chn_id
-                            )
-                        )
-                else:
-                    LOGGER.debug("Adding TapoWhitelampIntensityLevelSelect...")
-                    selects.append(
-                        TapoWhitelampIntensityLevelSelect(entry, hass, config_entry)
-                    )
-
-        if (
-            "quick_response" in entry["camData"]
-            and entry["camData"]["quick_response"] is not None
-            and len(entry["camData"]["quick_response"]) > 0
-        ):
-            tapoQuickResponseSelect = TapoQuickResponseSelect(entry, hass, config_entry)
-            if tapoQuickResponseSelect:
-                LOGGER.debug("Adding tapoQuickResponseSelect...")
-                selects.append(tapoQuickResponseSelect)
-
-        if (
-            "chimeAlarmConfigurations" in entry["camData"]
-            and entry["camData"]["chimeAlarmConfigurations"] is not None
-            and len(entry["camData"]["chimeAlarmConfigurations"]) > 0
-            and "supportAlarmTypeList" in entry["camData"]
-            and entry["camData"]["supportAlarmTypeList"] is not None
-        ):
-            for macAddress in entry["camData"]["chimeAlarmConfigurations"]:
-                tapoChimeRingtone = TapoChimeSound(
-                    entry, hass, config_entry, macAddress
+                _add_with_channels(
+                    TapoWhitelampIntensityLevelSelect,
+                    "TapoWhitelampIntensityLevelSelect",
                 )
-                selects.append(tapoChimeRingtone)
 
-        if (
-            "supportAlarmTypeList" in entry["camData"]
-            and entry["camData"]["supportAlarmTypeList"] is not None
-        ):
+        quick_responses = camData.get("quick_response")
+        if quick_responses:
+            tapoQuickResponseSelect = TapoQuickResponseSelect(entry, hass, config_entry)
+            LOGGER.debug("Adding tapoQuickResponseSelect...")
+            selects.append(tapoQuickResponseSelect)
+
+        chime_configs = camData.get("chimeAlarmConfigurations")
+        alarm_types = camData.get("supportAlarmTypeList")
+        if chime_configs and alarm_types:
+            for macAddress in chime_configs:
+                selects.append(TapoChimeSound(entry, hass, config_entry, macAddress))
+
+        if alarm_types:
             selects.append(TapoChimeSoundPlay(entry, hass, config_entry))
         return selects
 
@@ -519,34 +424,13 @@ class TapoWhitelampForceTimeSelect(TapoSelectEntity):
             self._attr_state = self._attr_current_option
 
     async def async_select_option(self, option: str) -> None:
-        if option == "5 min":
-            result = await self._hass.async_add_executor_job(
-                self._controller.setWhitelampConfig,
-                300,
-                False,
-                [self.chn_id] if self.chn_id else None,
-            )
-        elif option == "10 min":
-            result = await self._hass.async_add_executor_job(
-                self._controller.setWhitelampConfig,
-                600,
-                False,
-                [self.chn_id] if self.chn_id else None,
-            )
-        elif option == "15 min":
-            result = await self._hass.async_add_executor_job(
-                self._controller.setWhitelampConfig,
-                900,
-                False,
-                [self.chn_id] if self.chn_id else None,
-            )
-        elif option == "30 min":
-            result = await self._hass.async_add_executor_job(
-                self._controller.setWhitelampConfig,
-                1800,
-                False,
-                [self.chn_id] if self.chn_id else None,
-            )
+        seconds_map = {"5 min": 300, "10 min": 600, "15 min": 900, "30 min": 1800}
+        result = await self._hass.async_add_executor_job(
+            self._controller.setWhitelampConfig,
+            seconds_map[option],
+            False,
+            [self.chn_id] if self.chn_id else None,
+        )
         if "error_code" not in result or result["error_code"] == 0:
             self._attr_state = option
         self.async_write_ha_state()
@@ -934,20 +818,15 @@ class TapoAutomaticAlarmModeSelect(TapoSelectEntity):
             self._attr_state = self._attr_current_option
 
     async def async_select_option(self, option: str) -> None:
-        LOGGER.debug(
-            "setAlarm("
-            + str(option != "off")
-            + ", "
-            + str(option == "off" or option in ["both", "sound"])
-            + ", "
-            + str(option == "off" or option in ["both", "light"])
-            + ")"
-        )
+        alarm_on = option != "off"
+        sound_on = option in ("both", "sound", "off")
+        light_on = option in ("both", "light", "off")
+        LOGGER.debug(f"setAlarm({alarm_on}, {sound_on}, {light_on})")
         result = await self.hass.async_add_executor_job(
             self._controller.setAlarm,
-            option != "off",
-            option == "off" or option in ["both", "sound"],
-            option == "off" or option in ["both", "light"],
+            alarm_on,
+            sound_on,
+            light_on,
         )
         if "error_code" not in result or result["error_code"] == 0:
             self._attr_state = option
