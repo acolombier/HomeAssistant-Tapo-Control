@@ -68,7 +68,7 @@ class TapoCamUpdate(UpdateEntity):
         if not self._in_progress:
             return
         LOGGER.debug("Firmware status: %s", camData["firmwareUpdateStatus"])
-        ts = datetime.datetime.utcnow().timestamp()
+        ts = datetime.datetime.now(datetime.UTC).timestamp()
         timeout_elapsed = ts > self._installRequestedTime + 60
         firmware_status = camData.get("firmwareUpdateStatus")
         upgrade_status = (
@@ -174,7 +174,7 @@ class TapoCamUpdate(UpdateEntity):
             await self.hass.async_add_executor_job(
                 self._controller.startFirmwareUpgrade
             )
-            self._installRequestedTime = datetime.datetime.utcnow().timestamp()
+            self._installRequestedTime = datetime.datetime.now(datetime.UTC).timestamp()
             self._in_progress = True
             LOGGER.debug("Firmware install in progress...")
         except Exception as e:

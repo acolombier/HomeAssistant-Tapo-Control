@@ -428,7 +428,7 @@ async def deleteColdFilesOlderThanMaxSyncTime(
         )
         mediaSyncTime = int(mediaSyncHours) * 60 * 60
         entry_id = entry.entry_id
-        ts = datetime.datetime.utcnow().timestamp()
+        ts = datetime.datetime.now(datetime.UTC).timestamp()
         if os.path.exists(coldDirPath + "/" + folder + "/"):
             listDirFiles = await hass.async_add_executor_job(
                 os.listdir, coldDirPath + "/" + folder + "/"
@@ -499,7 +499,7 @@ async def mediaCleanup(hass, entry, deviceData):
         childID,
     )
 
-    ts = datetime.datetime.utcnow().timestamp()
+    ts = datetime.datetime.now(datetime.UTC).timestamp()
     deviceData["lastMediaCleanup"] = ts
     hotDirPath = getHotDirPathForEntry(hass, entry_id)
 
@@ -552,7 +552,7 @@ async def deleteDir(hass, dirPath):
 
 
 async def deleteFilesOlderThan(hass: HomeAssistant, dirPath, deleteOlderThan):
-    now = datetime.datetime.utcnow().timestamp()
+    now = datetime.datetime.now(datetime.UTC).timestamp()
     if os.path.exists(dirPath):
 
         listDirFiles = await hass.async_add_executor_job(os.listdir, dirPath)
@@ -1671,7 +1671,7 @@ async def getCamData(hass, controller, chInfo=None):
     camData["dualCamCapability"] = _safe_get(data, "getDualCamCapability", 0)
     camData["videoQualities"] = _safe_get(data, "getVideoQualities", 0)
 
-    camData["updated"] = datetime.datetime.utcnow().timestamp()
+    camData["updated"] = datetime.datetime.now(datetime.UTC).timestamp()
 
     try:
         chimeAlarmConfigurations = {}
@@ -1822,7 +1822,7 @@ async def update_listener(hass, entry):
 
 
 async def getLatestFirmwareVersion(hass, config_entry, entry, controller):
-    entry["lastFirmwareCheck"] = datetime.datetime.utcnow().timestamp()
+    entry["lastFirmwareCheck"] = datetime.datetime.now(datetime.UTC).timestamp()
     try:
         updateInfo = await hass.async_add_executor_job(controller.isUpdateAvailable)
         if (

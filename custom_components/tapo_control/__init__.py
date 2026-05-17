@@ -145,7 +145,7 @@ async def _media_sync(now, entry, device, hass, time_correction):
             tapoController.getRecordingsList
         )
         LOGGER.debug("getRecordingsList -2")
-        ts = datetime.datetime.utcnow().timestamp()
+        ts = datetime.datetime.now(datetime.UTC).timestamp()
 
         for searchResult in recordingsList:
             for key in searchResult:
@@ -227,7 +227,7 @@ def _handle_time_sync_error(error, hass, host, entry_id):
         and "error time" in str(error).lower()
     ):
         hass.data[DOMAIN][entry_id]["lastTimeSync"] = (
-            datetime.datetime.utcnow().timestamp()
+            datetime.datetime.now(datetime.UTC).timestamp()
             + int(timedelta(hours=24).total_seconds())
             - TIME_SYNC_PERIOD
         )
@@ -790,7 +790,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             if len(username) == 0 or len(password) == 0:
                 motionSensor = False
                 enableTimeSync = False
-            ts = datetime.datetime.utcnow().timestamp()
+            ts = datetime.datetime.now(datetime.UTC).timestamp()
 
             # motion detection retries
             if motionSensor or enableTimeSync:
@@ -853,7 +853,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                             await syncTime(hass, entry.entry_id)
                         except Exception as e:
                             _handle_time_sync_error(e, hass, host, entry.entry_id)
-                ts = datetime.datetime.utcnow().timestamp()
+                ts = datetime.datetime.now(datetime.UTC).timestamp()
             else:
                 if len(username) == 0 or len(password) == 0:
                     LOGGER.debug(
@@ -937,7 +937,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                                 )
                             )
                             controllerData["lastUpdate"] = (
-                                datetime.datetime.utcnow().timestamp()
+                                datetime.datetime.now(datetime.UTC).timestamp()
                             )
                             controllerData["reauth_retries"] = 0
                         except Exception as e:
