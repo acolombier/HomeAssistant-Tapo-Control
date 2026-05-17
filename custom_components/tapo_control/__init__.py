@@ -1,6 +1,7 @@
 import datetime
 import hashlib
 import asyncio
+from functools import partial
 from aiohttp import ClientError
 
 from homeassistant.core import HomeAssistant, callback
@@ -106,6 +107,136 @@ def _is_running_on_battery(data):
     return basic_info.get("power") in ("BATTERY", "SOLAR") or basic_info.get(
         "power_mode"
     ) in ("BATTERY", "SOLAR")
+
+
+async def _media_sync(now, entry, device, hass, time_correction):
+    LOGGER.debug("Running media sync function")
+    device["mediaSyncRanOnce"] = True
+    enableMediaSync = device[ENABLE_MEDIA_SYNC]
+    mediaSyncHours = entry.data.get(MEDIA_SYNC_HOURS)
+    LOGGER.debug("mediaSync - 2")
+
+    if mediaSyncHours == "":
+        mediaSyncTime = False
+    else:
+        mediaSyncTime = (int(mediaSyncHours) * 60 * 60) + time_correction
+    LOGGER.debug("mediaSync - 3")
+
+    if not (
+        enableMediaSync
+        and entry.entry_id in hass.data[DOMAIN]
+        and "controller" in device
+        and not device["runningMediaSync"]
+        and not device["isDownloadingStream"]
+    ):
+        LOGGER.debug(
+            "Media sync for %s disabled (inside mediaSync): %s",
+            device["name"],
+            enableMediaSync,
+        )
+        return
+
+    LOGGER.debug("Running media sync for %s...", device["name"])
+    device["runningMediaSync"] = True
+    try:
+        tapoController: Tapo = device["controller"]
+        LOGGER.debug("getRecordingsList -1")
+        recordingsList = await hass.async_add_executor_job(
+            tapoController.getRecordingsList
+        )
+        LOGGER.debug("getRecordingsList -2")
+        ts = datetime.datetime.utcnow().timestamp()
+
+        for searchResult in recordingsList:
+            for key in searchResult:
+                if not device[ENABLE_MEDIA_SYNC]:
+                    continue
+                date = searchResult[key]["date"]
+                if mediaSyncTime is not False and not (
+                    (int(ts) - (int(mediaSyncTime) + 86400))
+                    < convert_to_timestamp(date)
+                ):
+                    LOGGER.debug("Media sync ignoring %s (outside window).", date)
+                    continue
+                LOGGER.debug("getRecordings -1")
+                recordingsForDay = await getRecordings(
+                    hass, device, tapoController, date
+                )
+                LOGGER.debug("getRecordings -2")
+
+                recordings_to_process = []
+                for recording in recordingsForDay:
+                    for recordingKey in recording:
+                        if recording[recordingKey]["endTime"] > int(ts) - (
+                            int(mediaSyncTime)
+                        ):
+                            recordings_to_process.append(recording[recordingKey])
+
+                total = len(recordings_to_process)
+                for count, recording_data in enumerate(recordings_to_process, 1):
+                    enableMediaSync = device[ENABLE_MEDIA_SYNC]
+                    if not enableMediaSync:
+                        LOGGER.debug(
+                            "Media sync disabled (inside getRecording): %s",
+                            enableMediaSync,
+                        )
+                        break
+                    try:
+                        LOGGER.debug("getRecording -1")
+                        await getRecording(
+                            hass,
+                            tapoController,
+                            entry.entry_id,
+                            device,
+                            date,
+                            recording_data["startTime"],
+                            recording_data["endTime"],
+                            count,
+                            total,
+                        )
+                        LOGGER.debug("getRecording -2")
+                    except Unresolvable as err:
+                        if str(err) == "Recording is currently in progress.":
+                            LOGGER.info("Recording in progress: %s", err)
+                        else:
+                            LOGGER.warning(
+                                "Recording download failed: %s",
+                                err,
+                                exc_info=True,
+                            )
+                    except Exception as err:
+                        device["runningMediaSync"] = False
+                        LOGGER.exception("Recording download failed: %s", err)
+    except Exception as err:
+        LOGGER.exception("Media sync error: %s", err)
+    LOGGER.debug("runningMediaSync -false")
+    device["runningMediaSync"] = False
+
+
+def _get_all_entities(entry):
+    allEntities = entry["entities"].copy()
+    for childDevice in entry["childDevices"]:
+        allEntities.extend(childDevice["entities"])
+    return allEntities
+
+
+def _handle_time_sync_error(error, hass, host, entry_id):
+    if (
+        error.__class__.__module__ == "zeep.exceptions"
+        and error.__class__.__name__ == "Fault"
+        and "error time" in str(error).lower()
+    ):
+        hass.data[DOMAIN][entry_id]["lastTimeSync"] = (
+            datetime.datetime.utcnow().timestamp()
+            + int(timedelta(hours=24).total_seconds())
+            - TIME_SYNC_PERIOD
+        )
+        LOGGER.warning(
+            "Time sync for %s failed with zeep fault 'error time'. Backing off for 24 hours. This is issue with camera, do not report it to integration github. See more at https://github.com/JurajNyiri/HomeAssistant-Tapo-Control/issues/1166 .",
+            host,
+        )
+    else:
+        LOGGER.exception("Failed to sync time for %s", host)
 
 
 async def _create_controller(
@@ -645,31 +776,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
         LOGGER.debug("Controller has been set up.")
 
-        def getAllEntities(entry):
-            # Gather all entities, including of children devices
-            allEntities = entry["entities"].copy()
-            for childDevice in entry["childDevices"]:
-                allEntities.extend(childDevice["entities"])
-            return allEntities
-
-        def handleTimeSyncError(error):
-            if (
-                error.__class__.__module__ == "zeep.exceptions"
-                and error.__class__.__name__ == "Fault"
-                and "error time" in str(error).lower()
-            ):
-                # `lastTimeSync` is compared with `TIME_SYNC_PERIOD`, so offset it to back off 24 hours.
-                hass.data[DOMAIN][entry.entry_id]["lastTimeSync"] = (
-                    datetime.datetime.utcnow().timestamp()
-                    + int(timedelta(hours=24).total_seconds())
-                    - TIME_SYNC_PERIOD
-                )
-                LOGGER.warning(
-                    "Time sync for %s failed with zeep fault 'error time'. Backing off for 24 hours. This is issue with camera, do not report it to integration github. See more at https://github.com/JurajNyiri/HomeAssistant-Tapo-Control/issues/1166 .",
-                    host,
-                )
-            else:
-                LOGGER.exception("Failed to sync time for %s", host)
+        getAllEntities = _get_all_entities
 
         async def async_update_data():
             LOGGER.debug("Starting data update cycle")
@@ -745,7 +852,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         try:
                             await syncTime(hass, entry.entry_id)
                         except Exception as e:
-                            handleTimeSyncError(e)
+                            _handle_time_sync_error(e, hass, host, entry.entry_id)
                 ts = datetime.datetime.utcnow().timestamp()
             else:
                 if len(username) == 0 or len(password) == 0:
@@ -1153,149 +1260,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 try:
                     await syncTime(hass, entry.entry_id)
                 except Exception as e:
-                    handleTimeSyncError(e)
+                    _handle_time_sync_error(e, hass, host, entry.entry_id)
 
-        # Media sync
         timeCorrection = await hass.async_add_executor_job(
             tapoController.getTimeCorrection
         )
 
-        # todo move to utils
-        async def mediaSync(now, entry, device):
-            LOGGER.debug("Running media sync function")
-            device["mediaSyncRanOnce"] = True
-            enableMediaSync = device[ENABLE_MEDIA_SYNC]
-            mediaSyncHours = entry.data.get(MEDIA_SYNC_HOURS)
-            LOGGER.debug("mediaSync - 2")
-
-            if mediaSyncHours == "":
-                mediaSyncTime = False
-            else:
-                mediaSyncTime = (int(mediaSyncHours) * 60 * 60) + timeCorrection
-            LOGGER.debug("mediaSync - 3")
-            if (
-                enableMediaSync
-                and entry.entry_id in hass.data[DOMAIN]
-                and "controller" in device
-                and not device["runningMediaSync"]
-                and not device[
-                    "isDownloadingStream"
-                ]  # prevent breaking user manual upload
-            ):
-                LOGGER.debug("Running media sync for %s...", device["name"])
-                device["runningMediaSync"] = True
-                try:
-                    tapoController: Tapo = device["controller"]
-                    LOGGER.debug("getRecordingsList -1")
-                    recordingsList = await hass.async_add_executor_job(
-                        tapoController.getRecordingsList
-                    )
-                    LOGGER.debug("getRecordingsList -2")
-
-                    ts = datetime.datetime.utcnow().timestamp()
-                    for searchResult in recordingsList:
-                        for key in searchResult:
-                            LOGGER.debug("inside for - 1")
-                            enableMediaSync = device[ENABLE_MEDIA_SYNC]
-                            LOGGER.debug("inside for - 2")
-                            if enableMediaSync and (
-                                not mediaSyncTime
-                                or (
-                                    (
-                                        mediaSyncTime is not False
-                                        and (
-                                            (int(ts) - (int(mediaSyncTime) + 86400))
-                                            < convert_to_timestamp(
-                                                searchResult[key]["date"]
-                                            )
-                                        )
-                                    )
-                                )
-                            ):
-                                LOGGER.debug("getRecordings -1")
-                                recordingsForDay = await getRecordings(
-                                    hass,
-                                    device,
-                                    tapoController,
-                                    searchResult[key]["date"],
-                                )
-                                LOGGER.debug("getRecordings -2")
-                                totalRecordingsToDownload = 0
-                                for recording in recordingsForDay:
-                                    for recordingKey in recording:
-                                        if recording[recordingKey]["endTime"] > int(
-                                            ts
-                                        ) - (int(mediaSyncTime)):
-                                            totalRecordingsToDownload += 1
-                                recordingCount = 0
-                                for recording in recordingsForDay:
-                                    for recordingKey in recording:
-                                        if recording[recordingKey]["endTime"] > (
-                                            int(ts) - (int(mediaSyncTime))
-                                        ):
-                                            recordingCount += 1
-                                            try:
-                                                enableMediaSync = device[
-                                                    ENABLE_MEDIA_SYNC
-                                                ]
-                                                if enableMediaSync:
-                                                    LOGGER.debug("getRecording -1")
-                                                    await getRecording(
-                                                        hass,
-                                                        tapoController,
-                                                        entry.entry_id,
-                                                        device,
-                                                        searchResult[key]["date"],
-                                                        recording[recordingKey][
-                                                            "startTime"
-                                                        ],
-                                                        recording[recordingKey][
-                                                            "endTime"
-                                                        ],
-                                                        recordingCount,
-                                                        totalRecordingsToDownload,
-                                                    )
-                                                    LOGGER.debug("getRecording -2")
-                                                else:
-                                                    LOGGER.debug(
-                                                        "Media sync disabled (inside getRecording): %s",
-                                                        enableMediaSync,
-                                                    )
-                                            except Unresolvable as err:
-                                                if (
-                                                    str(err)
-                                                    == "Recording is currently in progress."
-                                                ):
-                                                    LOGGER.info(
-                                                        "Recording in progress: %s", err
-                                                    )
-                                                else:
-                                                    LOGGER.warning(
-                                                        "Recording download failed: %s",
-                                                        err,
-                                                        exc_info=True,
-                                                    )
-                                            except Exception as err:
-                                                device["runningMediaSync"] = False
-                                                LOGGER.exception(
-                                                    "Recording download failed: %s", err
-                                                )
-                            else:
-                                LOGGER.debug(
-                                    "Media sync ignoring %s. Media sync: %s.",
-                                    searchResult[key]["date"],
-                                    enableMediaSync,
-                                )
-                except Exception as err:
-                    LOGGER.exception("Media sync error: %s", err)
-                LOGGER.debug("runningMediaSync -false")
-                device["runningMediaSync"] = False
-            else:
-                LOGGER.debug(
-                    "Media sync for %s disabled (inside mediaSync): %s",
-                    device["name"],
-                    enableMediaSync,
-                )
+        mediaSync = partial(_media_sync, hass=hass, time_correction=timeCorrection)
 
         async def unsubscribe(event):
             if hass.data[DOMAIN][entry.entry_id]["events"]:
