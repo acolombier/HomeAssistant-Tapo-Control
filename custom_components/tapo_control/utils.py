@@ -1020,8 +1020,711 @@ def ldcHasField(rawData, section, field):
     return False
 
 
+def _safe_get(data, *keys, default=None):
+    try:
+        for key in keys:
+            data = data[key]
+        return data
+    except Exception:
+        return default
+
+
+def _safe_extract(container, field, default=None):
+    try:
+        return extractFieldByChannel(container, field)
+    except Exception:
+        return default
+
+
 async def getCamData(hass, controller, chInfo=None):
     LOGGER.debug("Fetching camera data")
+
+    chn_id = []
+    if chInfo:
+        for lens in chInfo:
+            chn_id.append(lens["chn_id"])
+    data = await hass.async_add_executor_job(controller.getMost, [], chn_id)
+    LOGGER.debug("Raw update data: %s", data)
+    camData = {}
+
+    camData["raw"] = data
+
+    camData["user"] = controller.user
+    if controller.isKLAP:
+        camData["basic_info"] = convertBasicInfo(data["get_device_info"][0])
+    else:
+        camData["basic_info"] = data["getDeviceInfo"][0]["device_info"]["basic_info"]
+
+    try:
+        motion_detection_data = data["getDetectionConfig"][0]["motion_detection"][
+            "motion_det"
+        ]
+        motionDetectionData = (
+            {"1": motion_detection_data} if chInfo is None else motion_detection_data
+        )
+
+        motion_detection_enabled = {
+            str(key): motion_det["enabled"]
+            for key, motion_det in motionDetectionData.items()
+        }
+        motion_detection_digital_sensitivity = {
+            str(key): motion_det["digital_sensitivity"]
+            for key, motion_det in motionDetectionData.items()
+        }
+        motion_detection_sensitivity = {
+            str(key): motionSensitivityFromData(motion_det)
+            for key, motion_det in motionDetectionData.items()
+        }
+    except Exception:
+        motion_detection_enabled = None
+        motion_detection_sensitivity = None
+        motion_detection_digital_sensitivity = None
+    camData["motion_detection_enabled"] = motion_detection_enabled
+    camData["motion_detection_sensitivity"] = motion_detection_sensitivity
+    camData["motion_detection_digital_sensitivity"] = (
+        motion_detection_digital_sensitivity
+    )
+
+    camData["dst_data"] = _safe_get(data, "getDstRule", 0, "system", "dst")
+    camData["clock_data"] = _safe_get(
+        data, "getClockStatus", 0, "system", "clock_status"
+    )
+    camData["timezone_timezone"] = _safe_get(
+        data, "getTimezone", 0, "system", "basic", "timezone"
+    )
+    camData["alert_event_types"] = _safe_get(
+        data, "getAlertEventType", 0, "msg_alarm", "msg_alarm_type"
+    )
+    camData["timezone_zone_id"] = _safe_get(
+        data, "getTimezone", 0, "system", "basic", "zone_id"
+    )
+    camData["timezone_timing_mode"] = _safe_get(
+        data, "getTimezone", 0, "system", "basic", "timing_mode"
+    )
+
+    try:
+        personDetectionData = data["getPersonDetectionConfig"][0]["people_detection"][
+            "detection"
+        ]
+        if chInfo is None:
+            personDetectionData = {"1": personDetectionData}
+        person_detection_enabled = {}
+        person_detection_sensitivity = {}
+        for key, detectionData in personDetectionData.items():
+            if not isinstance(detectionData, dict):
+                continue
+            key = str(key)
+            person_detection_enabled[key] = detectionData.get("enabled")
+            person_detection_sensitivity[key] = detectionSensitivityFromPercentage(
+                detectionData.get("sensitivity")
+            )
+        if not person_detection_enabled:
+            person_detection_enabled = None
+        if not person_detection_sensitivity:
+            person_detection_sensitivity = None
+    except Exception:
+        person_detection_enabled = None
+        person_detection_sensitivity = None
+    camData["person_detection_enabled"] = person_detection_enabled
+    camData["person_detection_sensitivity"] = person_detection_sensitivity
+
+    try:
+        vehicleDetectionData = data["getVehicleDetectionConfig"][0][
+            "vehicle_detection"
+        ]["detection"]
+        if chInfo is None:
+            vehicleDetectionData = {"1": vehicleDetectionData}
+        vehicle_detection_enabled = {}
+        vehicle_detection_sensitivity = {}
+        for key, detectionData in vehicleDetectionData.items():
+            if not isinstance(detectionData, dict):
+                continue
+            key = str(key)
+            vehicle_detection_enabled[key] = detectionData.get("enabled")
+            vehicle_detection_sensitivity[key] = detectionSensitivityFromPercentage(
+                detectionData.get("sensitivity")
+            )
+        if not vehicle_detection_enabled:
+            vehicle_detection_enabled = None
+        if not vehicle_detection_sensitivity:
+            vehicle_detection_sensitivity = None
+    except Exception:
+        vehicle_detection_enabled = None
+        vehicle_detection_sensitivity = None
+    camData["vehicle_detection_enabled"] = vehicle_detection_enabled
+    camData["vehicle_detection_sensitivity"] = vehicle_detection_sensitivity
+
+    try:
+        babyCryDetectionData = data["getBCDConfig"][0]["sound_detection"]["bcd"]
+        babyCry_detection_enabled = babyCryDetectionData["enabled"]
+        babyCry_detection_sensitivity = None
+
+        sensitivity = babyCryDetectionData["sensitivity"]
+        if sensitivity is not None:
+            if sensitivity == "low":
+                babyCry_detection_sensitivity = "low"
+            elif sensitivity == "medium":
+                babyCry_detection_sensitivity = "normal"
+            else:
+                babyCry_detection_sensitivity = "high"
+    except Exception:
+        babyCry_detection_enabled = None
+        babyCry_detection_sensitivity = None
+    camData["babyCry_detection_enabled"] = babyCry_detection_enabled
+    camData["babyCry_detection_sensitivity"] = babyCry_detection_sensitivity
+
+    try:
+        petDetectionData = data["getPetDetectionConfig"][0]["pet_detection"][
+            "detection"
+        ]
+        if chInfo is None:
+            petDetectionData = {"1": petDetectionData}
+        pet_detection_enabled = {}
+        pet_detection_sensitivity = {}
+        for key, detectionData in petDetectionData.items():
+            if not isinstance(detectionData, dict):
+                continue
+            key = str(key)
+            pet_detection_enabled[key] = detectionData.get("enabled")
+            pet_detection_sensitivity[key] = detectionSensitivityFromPercentage(
+                detectionData.get("sensitivity")
+            )
+        if not pet_detection_enabled:
+            pet_detection_enabled = None
+        if not pet_detection_sensitivity:
+            pet_detection_sensitivity = None
+    except Exception:
+        pet_detection_enabled = None
+        pet_detection_sensitivity = None
+    camData["pet_detection_enabled"] = pet_detection_enabled
+    camData["pet_detection_sensitivity"] = pet_detection_sensitivity
+
+    try:
+        barkDetectionData = data["getBarkDetectionConfig"][0]["bark_detection"][
+            "detection"
+        ]
+        bark_detection_enabled = barkDetectionData["enabled"]
+        bark_detection_sensitivity = None
+
+        sensitivity = tryParseInt(barkDetectionData["sensitivity"])
+        if sensitivity is not None:
+            if sensitivity <= 33:
+                bark_detection_sensitivity = "low"
+            elif sensitivity <= 66:
+                bark_detection_sensitivity = "normal"
+            else:
+                bark_detection_sensitivity = "high"
+    except Exception:
+        bark_detection_enabled = None
+        bark_detection_sensitivity = None
+    camData["bark_detection_enabled"] = bark_detection_enabled
+    camData["bark_detection_sensitivity"] = bark_detection_sensitivity
+
+    try:
+        meowDetectionData = data["getMeowDetectionConfig"][0]["meow_detection"][
+            "detection"
+        ]
+        meow_detection_enabled = meowDetectionData["enabled"]
+        meow_detection_sensitivity = None
+
+        sensitivity = tryParseInt(meowDetectionData["sensitivity"])
+        if sensitivity is not None:
+            if sensitivity <= 33:
+                meow_detection_sensitivity = "low"
+            elif sensitivity <= 66:
+                meow_detection_sensitivity = "normal"
+            else:
+                meow_detection_sensitivity = "high"
+    except Exception:
+        meow_detection_enabled = None
+        meow_detection_sensitivity = None
+    camData["meow_detection_enabled"] = meow_detection_enabled
+    camData["meow_detection_sensitivity"] = meow_detection_sensitivity
+
+    try:
+        glassDetectionData = data["getGlassDetectionConfig"][0]["glass_detection"][
+            "detection"
+        ]
+        glass_detection_enabled = glassDetectionData["enabled"]
+        glass_detection_sensitivity = None
+
+        sensitivity = tryParseInt(glassDetectionData["sensitivity"])
+        if sensitivity is not None:
+            if sensitivity <= 33:
+                glass_detection_sensitivity = "low"
+            elif sensitivity <= 66:
+                glass_detection_sensitivity = "normal"
+            else:
+                glass_detection_sensitivity = "high"
+    except Exception:
+        glass_detection_enabled = None
+        glass_detection_sensitivity = None
+    camData["glass_detection_enabled"] = glass_detection_enabled
+    camData["glass_detection_sensitivity"] = glass_detection_sensitivity
+
+    try:
+        tamperDetectionData = data["getTamperDetectionConfig"][0]["tamper_detection"][
+            "tamper_det"
+        ]
+        if chInfo is None:
+            tamperDetectionData = {"1": tamperDetectionData}
+        tamper_detection_enabled = {}
+        tamper_detection_sensitivity = {}
+        for key, detectionData in tamperDetectionData.items():
+            if not isinstance(detectionData, dict):
+                continue
+            key = str(key)
+            tamper_detection_enabled[key] = detectionData.get("enabled")
+            sensitivity = detectionData.get("sensitivity")
+            if sensitivity is None:
+                tamper_detection_sensitivity[key] = None
+            elif sensitivity == "medium":
+                tamper_detection_sensitivity[key] = "normal"
+            else:
+                tamper_detection_sensitivity[key] = sensitivity
+        if not tamper_detection_enabled:
+            tamper_detection_enabled = None
+        if not tamper_detection_sensitivity:
+            tamper_detection_sensitivity = None
+    except Exception:
+        tamper_detection_enabled = None
+        tamper_detection_sensitivity = None
+    camData["tamper_detection_enabled"] = tamper_detection_enabled
+    camData["tamper_detection_sensitivity"] = tamper_detection_sensitivity
+
+    try:
+        presets = {
+            id: data["getPresetConfig"][0]["preset"]["preset"]["name"][key]
+            for key, id in enumerate(
+                data["getPresetConfig"][0]["preset"]["preset"]["id"]
+            )
+        }
+    except Exception:
+        presets = False
+
+    camData["privacy_mode"] = _safe_get(
+        data, "getLensMaskConfig", 0, "lens_mask", "lens_mask_info", "enabled"
+    )
+    camData["notifications"] = _safe_get(
+        data,
+        "getMsgPushConfig",
+        0,
+        "msg_push",
+        "chn1_msg_push_info",
+        "notification_enabled",
+    )
+    camData["rich_notifications"] = _safe_get(
+        data,
+        "getMsgPushConfig",
+        0,
+        "msg_push",
+        "chn1_msg_push_info",
+        "rich_notification_enabled",
+    )
+
+    ldc_switch = getLdcImageSection(data.get("getLdc"), "switch")
+    ldc_common = getLdcImageSection(data.get("getLdc"), "common")
+
+    camData["lens_distrotion_correction"] = _safe_extract(ldc_switch, "ldc")
+    camData["ldcStyle"] = _safe_extract(ldc_common, "style")
+
+    light_frequency_mode = _safe_extract(ldc_common, "light_freq_mode")
+
+    if light_frequency_mode is None:
+        try:
+            light_frequency_mode = extractFieldByChannel(
+                data["getLightFrequencyInfo"][0]["image"]["common"], "light_freq_mode"
+            )
+        except Exception:
+            light_frequency_mode = None
+    camData["light_frequency_mode"] = light_frequency_mode
+
+    camData["night_vision_mode"] = _safe_extract(
+        _safe_get(data, "getNightVisionModeConfig", 0, "image", "switch"),
+        "night_vision_mode",
+    )
+    camData["diagnose_mode"] = _safe_get(data, "getDiagnoseMode", 0, "system", "sys")
+    camData["cover_config"] = _safe_get(data, "getCoverConfig", 0, "cover", "cover")
+    camData["smart_track_config"] = _safe_get(
+        data, "getSmartTrackConfig", 0, "smart_track", "smart_track_info"
+    )
+    camData["network_ip_info"] = _safe_get(data, "getDeviceIpAddress", 0)
+    camData["night_vision_capability"] = _safe_get(
+        data,
+        "getNightVisionCapability",
+        0,
+        "image_capability",
+        "supplement_lamp",
+        "night_vision_mode_range",
+    )
+
+    camData["night_vision_mode_switching"] = _safe_extract(ldc_common, "inf_type")
+
+    if camData["night_vision_mode_switching"] is None:
+        camData["night_vision_mode_switching"] = _safe_extract(
+            _safe_get(data, "getLightFrequencyInfo", 0, "image", "common"), "inf_type"
+        )
+
+    camData["force_white_lamp_state"] = _safe_extract(ldc_switch, "force_wtl_state")
+    camData["smartwtl_digital_level"] = _safe_extract(
+        ldc_common, "smartwtl_digital_level"
+    )
+    camData["flood_light_config"] = _safe_get(
+        data, "getFloodlightConfig", 0, "floodlight", "config"
+    )
+    camData["flood_light_status"] = _safe_get(data, "getFloodlightStatus", 0, "status")
+    camData["flood_light_capability"] = _safe_get(
+        data, "getFloodlightCapability", 0, "floodlight", "capability"
+    )
+
+    try:
+        flip_type = extractFieldByChannel(ldc_switch, "flip_type")
+        if isinstance(flip_type, dict):
+            flip = {
+                key: ("on" if value == "center" else "off")
+                for key, value in flip_type.items()
+            }
+        elif flip_type is None:
+            flip = None
+        else:
+            flip = "on" if flip_type == "center" else "off"
+    except Exception:
+        flip = None
+
+    if flip is None:
+        try:
+            rotation_image = data["getRotationStatus"][0].get("image", {})
+            rotation_switch = rotation_image.get("switch_chn") or rotation_image.get(
+                "switch"
+            )
+            rotation_flip = extractFieldByChannel(rotation_switch, "flip_type")
+            if isinstance(rotation_flip, dict):
+                flip = {
+                    key: ("on" if value == "center" else "off")
+                    for key, value in rotation_flip.items()
+                }
+            elif rotation_flip is None:
+                flip = None
+            else:
+                flip = "on" if rotation_flip == "center" else "off"
+        except Exception:
+            flip = None
+    camData["flip"] = flip
+
+    hubSiren = False
+    alarmConfig = None
+    alarmStatus = False
+    alarmSirenTypeList = []
+    if not controller.isKLAP:
+        try:
+            if data["getSirenConfig"][0] != False:
+                hubSiren = True
+                sirenData = data["getSirenConfig"][0]
+                alarmConfig = {
+                    "typeOfAlarm": "getSirenConfig",
+                    "siren_type": sirenData["siren_type"],
+                    "siren_volume": sirenData["volume"],
+                    "siren_duration": sirenData["duration"],
+                }
+        except Exception as err:
+            LOGGER.warning("getSirenConfig unexpected error: %s", err, exc_info=True)
+
+    if not controller.isKLAP:
+        try:
+            if not hubSiren and data["getAlarmConfig"][0] != False:
+                alarmData = data["getAlarmConfig"][0]
+                alarmConfig = {
+                    "typeOfAlarm": "getAlarmConfig",
+                    "mode": alarmData["alarm_mode"],
+                    "automatic": alarmData["enabled"],
+                }
+                if "light_type" in alarmData:
+                    alarmConfig["light_type"] = alarmData["light_type"]
+                if "siren_type" in alarmData:
+                    alarmConfig["siren_type"] = alarmData["siren_type"]
+                if "siren_duration" in alarmData:
+                    alarmConfig["siren_duration"] = alarmData["siren_duration"]
+                if "alarm_duration" in alarmData:
+                    alarmConfig["alarm_duration"] = alarmData["alarm_duration"]
+                if "siren_volume" in alarmData:
+                    alarmConfig["siren_volume"] = alarmData["siren_volume"]
+                if "alarm_volume" in alarmData:
+                    alarmConfig["alarm_volume"] = alarmData["alarm_volume"]
+
+        except Exception as err:
+            LOGGER.warning("getAlarmConfig unexpected error: %s", err, exc_info=True)
+
+    if not controller.isKLAP:
+        try:
+            if (
+                alarmConfig is None
+                and "msg_alarm" in data["getLastAlarmInfo"][0]
+                and "chn1_msg_alarm_info" in data["getLastAlarmInfo"][0]["msg_alarm"]
+                and data["getLastAlarmInfo"][0]["msg_alarm"]["chn1_msg_alarm_info"]
+                is not False
+            ):
+                alarmData = data["getLastAlarmInfo"][0]["msg_alarm"][
+                    "chn1_msg_alarm_info"
+                ]
+                alarmConfig = {
+                    "typeOfAlarm": "getAlarm",
+                    "mode": alarmData["alarm_mode"],
+                    "automatic": alarmData["enabled"],
+                }
+                if "light_type" in alarmData:
+                    alarmConfig["light_type"] = alarmData["light_type"]
+                if "siren_type" in alarmData:
+                    alarmConfig["siren_type"] = alarmData["siren_type"]
+                if "alarm_type" in alarmData:
+                    alarmConfig["siren_type"] = alarmData["alarm_type"]
+                if "siren_duration" in alarmData:
+                    alarmConfig["siren_duration"] = alarmData["siren_duration"]
+                if "alarm_duration" in alarmData:
+                    alarmConfig["alarm_duration"] = alarmData["alarm_duration"]
+                if "siren_volume" in alarmData:
+                    alarmConfig["siren_volume"] = alarmData["siren_volume"]
+                if "alarm_volume" in alarmData:
+                    alarmConfig["alarm_volume"] = alarmData["alarm_volume"]
+        except Exception as err:
+            LOGGER.warning("getLastAlarmInfo unexpected error: %s", err, exc_info=True)
+
+    if not controller.isKLAP:
+        try:
+            if (
+                data["getSirenStatus"][0] is not False
+                and "status" in data["getSirenStatus"][0]
+            ):
+                alarmStatus = data["getSirenStatus"][0]["status"]
+        except Exception as err:
+            LOGGER.warning("getSirenStatus unexpected error: %s", err, exc_info=True)
+
+    if not controller.isKLAP:
+        if alarmConfig is not None:
+            try:
+                if (
+                    data["getSirenTypeList"][0] is not False
+                    and "siren_type_list" in data["getSirenTypeList"][0]
+                ):
+                    alarmSirenTypeList = data["getSirenTypeList"][0]["siren_type_list"]
+            except Exception as err:
+                LOGGER.warning(
+                    "getSirenTypeList unexpected error: %s", err, exc_info=True
+                )
+
+    if not controller.isKLAP:
+        if len(alarmSirenTypeList) == 0:
+            try:
+                if (
+                    data["getAlertTypeList"][0] is not False
+                    and "msg_alarm" in data["getAlertTypeList"][0]
+                    and "alert_type" in data["getAlertTypeList"][0]["msg_alarm"]
+                    and "alert_type_list"
+                    in data["getAlertTypeList"][0]["msg_alarm"]["alert_type"]
+                ):
+                    alarmSirenTypeList = data["getAlertTypeList"][0]["msg_alarm"][
+                        "alert_type"
+                    ]["alert_type_list"]
+            except Exception as err:
+                LOGGER.warning(
+                    "getAlertTypeList unexpected error: %s", err, exc_info=True
+                )
+
+    if len(alarmSirenTypeList) == 0:
+        # Some cameras have hardcoded 0 and 1 values (Siren, Tone)
+        alarmSirenTypeList.append("Siren")
+        alarmSirenTypeList.append("Tone")
+
+    alarm_user_sounds = None
+    try:
+        for alertConfig in data["getAlertConfig"]:
+            if (
+                alertConfig is not False
+                and "msg_alarm" in alertConfig
+                and "usr_def_audio" in alertConfig["msg_alarm"]
+                and (alarm_user_sounds is None or len(alarm_user_sounds) == 0)
+            ):
+                alarm_user_sounds = []
+                for alarm_sound in alertConfig["msg_alarm"]["usr_def_audio"]:
+                    first_key = next(iter(alarm_sound))
+                    first_value = alarm_sound[first_key]
+                    alarm_user_sounds.append(first_value)
+    except Exception:
+        alarm_user_sounds = None
+
+    alarm_user_start_id = None
+    try:
+        for alertConfig in data["getAlertConfig"]:
+            if (
+                alertConfig is not False
+                and "msg_alarm" in alertConfig
+                and "capability" in alertConfig["msg_alarm"]
+                and "usr_def_start_file_id" in alertConfig["msg_alarm"]["capability"]
+                and alarm_user_start_id is None
+            ):
+                alarm_user_start_id = alertConfig["msg_alarm"]["capability"][
+                    "usr_def_start_file_id"
+                ]
+    except Exception:
+        alarm_user_start_id = None
+    camData["alarm_user_start_id"] = alarm_user_start_id
+    camData["alarm_user_sounds"] = alarm_user_sounds
+    camData["alarm_config"] = alarmConfig
+    camData["alarm_status"] = alarmStatus
+    camData["alarm_is_hubSiren"] = hubSiren
+    camData["alarm_siren_type_list"] = alarmSirenTypeList
+
+    try:
+        if (
+            "image_capability" in data["getNightVisionCapability"][0]
+            and "supplement_lamp"
+            in data["getNightVisionCapability"][0]["image_capability"]
+        ):
+            nightVisionCapability = data["getNightVisionCapability"][0][
+                "image_capability"
+            ]["supplement_lamp"]
+    except Exception:
+        nightVisionCapability = None
+    camData["nightVisionCapability"] = nightVisionCapability
+
+    led = _safe_get(data, "getLedStatus", 0, "led", "config", "enabled")
+    if led is None:
+        led = "on" if data["get_device_info"][0]["led_off"] == 0 else "off"
+    camData["led"] = led
+
+    camData["auto_track"] = _safe_get(
+        data, "getTargetTrackConfig", 0, "target_track", "target_track_info", "enabled"
+    )
+
+    if presets:
+        camData["presets"] = presets
+    else:
+        camData["presets"] = {}
+
+    camData["firmwareUpdateStatus"] = _safe_get(
+        data, "getFirmwareUpdateStatus", 0, "cloud_config"
+    )
+    camData["childDevices"] = _safe_get(data, "getChildDeviceList", 0)
+    camData["whitelampConfigForceTime"] = _safe_extract(
+        _safe_get(data, "getWhitelampConfig", 0, "image", "switch"), "wtl_force_time"
+    )
+    camData["whitelampConfigIntensity"] = _safe_extract(
+        _safe_get(data, "getWhitelampConfig", 0, "image", "switch"),
+        "wtl_intensity_level",
+    )
+
+    try:
+        sdCardData = []
+        for hdd in data["getSdCardStatus"][0]["harddisk_manage"]["hd_info"]:
+            sdCardData.append(hdd["hd_info_1"])
+    except Exception:
+        sdCardData = []
+    camData["sdCardData"] = sdCardData
+
+    camData["whitelampStatus"] = _safe_get(data, "getWhitelampStatus", 0, "status")
+    camData["recordPlan"] = _safe_get(
+        data, "getRecordPlan", 0, "record_plan", "chn1_channel"
+    )
+    camData["microphoneVolume"] = _safe_get(
+        data, "getAudioConfig", 0, "audio_config", "microphone", "volume"
+    )
+    camData["microphoneMute"] = _safe_get(
+        data, "getAudioConfig", 0, "audio_config", "microphone", "mute"
+    )
+    camData["microphoneNoiseCancelling"] = _safe_get(
+        data, "getAudioConfig", 0, "audio_config", "microphone", "noise_cancelling"
+    )
+    camData["speakerVolume"] = _safe_get(
+        data, "getAudioConfig", 0, "audio_config", "speaker", "volume"
+    )
+
+    try:
+        record_audio = (
+            data["getAudioConfig"][0]["audio_config"]["record_audio"]["enabled"] == "on"
+        )
+    except Exception:
+        record_audio = None
+    camData["record_audio"] = record_audio
+
+    camData["autoUpgradeEnabled"] = _safe_get(
+        data, "getFirmwareAutoUpgradeConfig", 0, "auto_upgrade", "common", "enabled"
+    )
+
+    connectionInformation = _safe_get(data, "getConnectionType", 0)
+
+    if connectionInformation is None:
+        connectionInformation = {}
+        try:
+            connectionInformation["ssid"] = base64.b64decode(
+                data["get_device_info"][0]["ssid"]
+            ).decode("utf-8")
+        except Exception:
+            pass
+        try:
+            connectionInformation["rssiValue"] = data["get_device_info"][0]["rssi"]
+
+        except Exception:
+            pass
+    camData["connectionInformation"] = connectionInformation
+
+    camData["videoCapability"] = _safe_get(data, "getVideoCapability", 0)
+    camData["allChnInfo"] = _safe_get(data, "getAllChnInfo", 0)
+    camData["dualCamCapability"] = _safe_get(data, "getDualCamCapability", 0)
+    camData["videoQualities"] = _safe_get(data, "getVideoQualities", 0)
+
+    camData["updated"] = datetime.datetime.utcnow().timestamp()
+
+    try:
+        chimeAlarmConfigurations = {}
+        count = 0
+        for chimeAlarmConfiguration in data["get_chime_alarm_configure"]:
+            chimeAlarmConfigurations[data["get_pair_list"][0]["mac_list"][count]] = (
+                chimeAlarmConfiguration
+            )
+            count += 1
+    except Exception:
+        chimeAlarmConfigurations = None
+    camData["chimeAlarmConfigurations"] = chimeAlarmConfigurations
+
+    camData["supportAlarmTypeList"] = _safe_get(data, "get_support_alarm_type_list", 0)
+
+    try:
+        if isinstance(data["getQuickRespList"], list):
+            camData["quick_response"] = data["getQuickRespList"][0]["quick_response"][
+                "quick_resp_audio"
+            ]
+        elif isinstance(data["getQuickRespList"], dict):
+            camData["quick_response"] = data["getQuickRespList"]["quick_resp_audio"]
+        else:
+            LOGGER.warning("Quick response data is not in expected format")
+    except Exception:
+        camData["quick_response"] = None
+
+    camData["dualLinkageTargetSetting"] = _safe_get(
+        data, "readLinkageTargetSetting", 0, "dual_cam_linkage"
+    )
+    camData["dualLinkageCapability"] = _safe_get(
+        data,
+        "getLinkageTargetCapability",
+        0,
+        "dual_cam_linkage",
+        "linkage_target_capability",
+    )
+
+    try:
+        dualCamLinkageEnabled = data["getDualCamLinkage"][0]["dual_cam_linkage"][
+            "linkage_state"
+        ]["enabled"]
+        dualCamLinkageType = data["getDualCamLinkage"][0]["dual_cam_linkage"][
+            "linkage_state"
+        ]["linkage_type"]
+    except Exception:
+        dualCamLinkageEnabled = None
+        dualCamLinkageType = None
+    camData["dualCamLinkageEnabled"] = dualCamLinkageEnabled
+    camData["dualCamLinkageType"] = dualCamLinkageType
+
+    LOGGER.debug("Finished fetching camera data")
+    LOGGER.debug("Processed update data: %s", camData)
     return camData
 
 
