@@ -301,7 +301,7 @@ class TapoCamEntity(Camera):
         return await super().async_create_stream()
 
     def updateTapo(self, camData):
-        LOGGER.debug("updateTapo - camera")
+        LOGGER.debug("Updating camera entity data")
         if not camData:
             self._attr_state = STATE_UNAVAILABLE
         else:
@@ -340,7 +340,7 @@ class TapoCamEntity(Camera):
                 }
 
     async def async_enable_motion_detection(self):
-        LOGGER.debug("async_enable_motion_detection - camera")
+        LOGGER.debug("Enabling motion detection")
         await self.hass.async_add_executor_job(
             self._controller.setMotionDetection,
             True,
@@ -350,7 +350,7 @@ class TapoCamEntity(Camera):
         await self._coordinator.async_request_refresh()
 
     async def async_disable_motion_detection(self):
-        LOGGER.debug("async_disable_motion_detection - camera")
+        LOGGER.debug("Disabling motion detection")
         await self.hass.async_add_executor_job(
             self._controller.setMotionDetection,
             False,
@@ -360,7 +360,7 @@ class TapoCamEntity(Camera):
         await self._coordinator.async_request_refresh()
 
     async def async_turn_on(self):
-        LOGGER.debug("async_turn_on - camera")
+        LOGGER.debug("Turning on camera")
         await self._hass.async_add_executor_job(
             self._controller.setPrivacyMode,
             False,
@@ -368,7 +368,7 @@ class TapoCamEntity(Camera):
         await self._coordinator.async_request_refresh()
 
     async def async_turn_off(self):
-        LOGGER.debug("async_turn_off - camera")
+        LOGGER.debug("Turning off camera")
         await self._hass.async_add_executor_job(
             self._controller.setPrivacyMode,
             True,
@@ -376,17 +376,15 @@ class TapoCamEntity(Camera):
         await self._coordinator.async_request_refresh()
 
     async def save_preset(self, name):
-        LOGGER.debug("save_preset - camera")
+        LOGGER.debug("Saving preset")
         if not name == "" and not name.isnumeric():
             await self.hass.async_add_executor_job(self._controller.savePreset, name)
             await self._coordinator.async_request_refresh()
         else:
-            LOGGER.error(
-                "Incorrect " + NAME + " value. It cannot be empty or a number."
-            )
+            LOGGER.error("Incorrect %s value. It cannot be empty or a number.", NAME)
 
     async def delete_preset(self, preset):
-        LOGGER.debug("delete_preset - camera")
+        LOGGER.debug("Deleting preset")
         if preset.isnumeric():
             await self.hass.async_add_executor_job(
                 self._controller.deletePreset, preset
@@ -403,7 +401,7 @@ class TapoCamEntity(Camera):
                 )
                 await self._coordinator.async_request_refresh()
             else:
-                LOGGER.error("Preset " + preset + " does not exist.")
+                LOGGER.error("Preset %s does not exist.", preset)
 
 
 class TapoRTSPCamEntity(TapoCamEntity):
@@ -429,7 +427,7 @@ class TapoRTSPCamEntity(TapoCamEntity):
         )
 
     async def async_camera_image(self, width=None, height=None):
-        LOGGER.debug("async_camera_image - camera")
+        LOGGER.debug("Capturing camera image")
         ffmpeg = ImageFrame(self._ffmpeg.binary)
         streaming_url = getStreamSource(
             self._config_entry,
@@ -445,7 +443,7 @@ class TapoRTSPCamEntity(TapoCamEntity):
         return image
 
     async def handle_async_mjpeg_stream(self, request):
-        LOGGER.debug("handle_async_mjpeg_stream - camera")
+        LOGGER.debug("Handling MJPEG stream")
         streaming_url = getStreamSource(
             self._config_entry,
             self._stream_id,
@@ -515,7 +513,7 @@ class TapoDirectCamEntity(TapoCamEntity):
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ):
-        LOGGER.debug("async_camera_image")
+        LOGGER.debug("Capturing camera image")
         streamer = Streamer(
             self._controller,
             includeAudio=False,
@@ -529,24 +527,24 @@ class TapoDirectCamEntity(TapoCamEntity):
                 "-map-video": f"0:v:{self.videoStream}",
             },
         )
-        LOGGER.debug("async_camera_image - Starting streamer")
+        LOGGER.debug("Starting streamer")
         info = await streamer.start()
 
         proc = info["ffmpegProcess"]
 
-        LOGGER.debug("Direct MJPEG: ffmpeg PID %s", proc.pid)
+        LOGGER.debug("FFmpeg PID: %s", proc.pid)
 
         jpeg = await proc.stdout.read()
         await proc.wait()
 
-        LOGGER.debug("async_camera_image - Stopping streamer")
+        LOGGER.debug("Stopping streamer")
         await streamer.stop()
         info["streamProcess"].cancel()
-        LOGGER.debug("async_camera_image - Returning jpeg")
+        LOGGER.debug("Returning JPEG image")
         return jpeg
 
     async def handle_async_mjpeg_stream(self, request):
-        LOGGER.debug("Direct MJPEG: request")
+        LOGGER.debug("MJPEG stream requested")
         streamer = Streamer(
             self._controller,
             includeAudio=False,
@@ -562,7 +560,7 @@ class TapoDirectCamEntity(TapoCamEntity):
         info = await streamer.start()
         proc = info["ffmpegProcess"]
 
-        LOGGER.debug("Direct MJPEG: ffmpeg PID %s", proc.pid)
+        LOGGER.debug("FFmpeg PID: %s", proc.pid)
 
         try:
             return await async_aiohttp_proxy_stream(
@@ -572,7 +570,7 @@ class TapoDirectCamEntity(TapoCamEntity):
                 self._ffmpeg.ffmpeg_stream_content_type,
             )
         finally:
-            LOGGER.debug("Direct MJPEG: shutting ffmpeg / streamer")
+            LOGGER.debug("Shutting down streamer")
             if proc.returncode is None:
                 proc.kill()
                 await proc.wait()
@@ -584,26 +582,26 @@ class TapoDirectCamEntity(TapoCamEntity):
             LOGGER.debug("%s: %s", prefix, line.decode().rstrip())
 
     def logFunction(self, data):
-        LOGGER.debug(data)
+        LOGGER.debug("Streamer: %s", data)
 
     async def _ensure_av_pipe(self, newStream=False) -> None:
-        LOGGER.debug("_ensure_av_pipe() called")
+        LOGGER.debug("Ensuring AV pipe is ready")
 
         if self._streamer and self._streamer.running and not newStream:
-            LOGGER.debug("_ensure_av_pipe: already running (fd=%s)", self._stream_fd)
+            LOGGER.debug("AV pipe already running (fd: %s)", self._stream_fd)
             return
 
         if self._streamer:
-            LOGGER.debug("_ensure_av_pipe: stopping previous Streamer")
+            LOGGER.debug("Stopping previous streamer")
             try:
                 await self._streamer.stop()
                 if self._stream_task:
                     self._stream_task.cancel()
             except Exception as err:
-                LOGGER.warning(err)
+                LOGGER.warning("Streamer cleanup warning: %s", err, exc_info=True)
                 pass
 
-        LOGGER.debug("_ensure_av_pipe: launching NEW Streamer")
+        LOGGER.debug("Launching new streamer")
         self._streamer = Streamer(
             self._controller,
             includeAudio=False,
@@ -622,14 +620,14 @@ class TapoDirectCamEntity(TapoCamEntity):
         self._stream_task = info["streamProcess"]
 
         LOGGER.debug(
-            "_ensure_av_pipe: ready (fd=%s, task=%s)",
+            "AV pipe ready (fd: %s, task: %s)",
             self._stream_fd,
             self._stream_task,
         )
 
     async def stream_source(self) -> str | None:
         source = f"pipe:{self._stream_fd}"
-        LOGGER.debug("stream_source: returning  %s", source)
+        LOGGER.debug("Stream source: %s", source)
         return source
 
     async def async_create_stream(self) -> Stream | None:
@@ -641,5 +639,5 @@ class TapoDirectCamEntity(TapoCamEntity):
 
     def _on_stream_state(self):
         if not self._HAstream.available:
-            LOGGER.debug("%s: HA stream unavailable: restarting", self.entity_id)
+            LOGGER.debug("HA stream unavailable for %s, restarting", self.entity_id)
             asyncio.create_task(self._ensure_av_pipe(newStream=True))

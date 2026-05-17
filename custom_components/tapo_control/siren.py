@@ -46,7 +46,7 @@ class TapoSirenEntity(SirenEntity, TapoEntity):
         self, name_suffix, entry: dict, hass: HomeAssistant, config_entry: ConfigEntry
     ):
 
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing siren %s", name_suffix)
 
         self._hass = hass
 
@@ -63,7 +63,7 @@ class TapoSirenEntity(SirenEntity, TapoEntity):
         TapoEntity.__init__(self, entry, name_suffix)
         SirenEntity.__init__(self)
 
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Siren %s initialized", name_suffix)
 
 
 class TapoSiren(TapoSirenEntity):
@@ -74,7 +74,7 @@ class TapoSiren(TapoSirenEntity):
 
     async def async_turn_on(self, duration: int | None = None, **kwargs) -> None:
         for kw in kwargs:
-            LOGGER.debug(f"async_turn_on: Parameter '{kw}' not supported")
+            LOGGER.debug("Parameter '%s' not supported for turn_on", kw)
 
         async def _turn_off_after(seconds: int, send: bool) -> None:
             await asyncio.sleep(seconds)
@@ -96,14 +96,14 @@ class TapoSiren(TapoSirenEntity):
                     self._controller.startManualAlarm,
                 )
             except Exception as e:
-                LOGGER.debug(e)
+                LOGGER.warning("Siren operation failed: %s", e, exc_info=True)
 
             try:
                 result2 = await self._hass.async_add_executor_job(
                     self._controller.setSirenStatus, True
                 )
             except Exception as e:
-                LOGGER.debug(e)
+                LOGGER.warning("Siren operation failed: %s", e, exc_info=True)
 
         if result_has_error(result) and result_has_error(result2):
             self._attr_available = False
@@ -139,14 +139,14 @@ class TapoSiren(TapoSirenEntity):
                         self._controller.stopManualAlarm,
                     )
                 except Exception as e:
-                    LOGGER.debug(e)
+                    LOGGER.warning("Siren operation failed: %s", e, exc_info=True)
 
                 try:
                     result2 = await self._hass.async_add_executor_job(
                         self._controller.setSirenStatus, False
                     )
                 except Exception as e:
-                    LOGGER.debug(e)
+                    LOGGER.warning("Siren operation failed: %s", e, exc_info=True)
             if result_has_error(result) and result_has_error(result2):
                 self._attr_available = False
                 raise Exception("Camera does not support triggering the siren.")

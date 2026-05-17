@@ -16,7 +16,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    LOGGER.debug("Setting up buttons")
+    LOGGER.debug("Setting up button entities")
     entry = hass.data[DOMAIN][config_entry.entry_id]
 
     async def setupEntities(entry):
@@ -30,14 +30,14 @@ async def async_setup_entry(
                 entry, hass, TapoStartManualAlarmButton, "getAlarm", config_entry
             )
             if tapoStartManualAlarmButton:
-                LOGGER.debug("Adding tapoStartManualAlarmButton...")
+                LOGGER.debug("Adding start alarm button")
                 buttons.append(tapoStartManualAlarmButton)
 
             tapoStopManualAlarmButton = await check_and_create(
                 entry, hass, TapoStopManualAlarmButton, "getAlarm", config_entry
             )
             if tapoStopManualAlarmButton:
-                LOGGER.debug("Adding tapoStopManualAlarmButton...")
+                LOGGER.debug("Adding stop alarm button")
                 buttons.append(tapoStopManualAlarmButton)
 
             if not entry["isParent"] and not entry["controller"].isKLAP:
@@ -53,7 +53,7 @@ async def async_setup_entry(
             buttons.append(TapoMoveRightButton(entry, hass, config_entry))
             buttons.append(TapoMoveLeftButton(entry, hass, config_entry))
         else:
-            LOGGER.info("Buttons: Camera does not support movement.")
+            LOGGER.debug("Camera does not support movement")
 
         if (
             "chimeAlarmConfigurations" in entry["camData"]
@@ -187,14 +187,14 @@ class TapoStartManualAlarmButton(TapoButtonEntity):
                 self._controller.startManualAlarm,
             )
         except Exception as e:
-            LOGGER.debug(e)
+            LOGGER.warning("Button operation failed: %s", e, exc_info=True)
 
         try:
             result2 = await self._hass.async_add_executor_job(
                 self._controller.setSirenStatus, True
             )
         except Exception as e:
-            LOGGER.debug(e)
+            LOGGER.warning("Button operation failed: %s", e, exc_info=True)
 
         if result_has_error(result) and result_has_error(result2):
             if self.sirenType is not None:
@@ -241,14 +241,14 @@ class TapoStopManualAlarmButton(TapoButtonEntity):
                 self._controller.stopManualAlarm,
             )
         except Exception as e:
-            LOGGER.debug(e)
+            LOGGER.warning("Button operation failed: %s", e, exc_info=True)
 
         try:
             result2 = await self._hass.async_add_executor_job(
                 self._controller.setSirenStatus, False
             )
         except Exception as e:
-            LOGGER.debug(e)
+            LOGGER.warning("Button operation failed: %s", e, exc_info=True)
 
         if result_has_error(result) and result_has_error(result2):
             if self.sirenType is not None:

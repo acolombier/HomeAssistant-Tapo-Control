@@ -43,7 +43,7 @@ from urllib.parse import urlencode, urlparse, parse_qsl
 
 async def async_get_media_source(hass: HomeAssistant) -> TapoMediaSource:
     """Set up Radio Browser media source."""
-    LOGGER.debug("async_get_media_source")
+    LOGGER.debug("Getting media source")
     # TODO: handle case where cloud password was not set with nice error
 
     entries = hass.config_entries.async_entries(DOMAIN)
@@ -75,7 +75,7 @@ class TapoMediaSource(MediaSource):
         err_msg = str(err)
         if "-71105" in err_msg:
             return RECORDINGS_UNAVAILABLE_MESSAGE
-        LOGGER.warning("Unsuported recoding exception: %s (%s)", err_msg, repr(err))
+        LOGGER.warning("Unsupported recording exception: %s (%s)", err_msg, repr(err))
         return "Unable to retrieve recordings, please try again later."
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry | None) -> None:
@@ -98,7 +98,7 @@ class TapoMediaSource(MediaSource):
         if len(path) == 2:
             try:
                 query = parse_identifier(path[1])
-                LOGGER.debug(query)
+                LOGGER.debug("Media source query: %s", query)
                 entry = query["entry"]
                 date = query["date"]
                 startDate = query["startDate"]
@@ -125,8 +125,7 @@ class TapoMediaSource(MediaSource):
                         "Already downloading a recording, please try again later."
                     )
 
-                LOGGER.debug(startDate)
-                LOGGER.debug(endDate)
+                LOGGER.debug("Start date: %, end date: %s", startDate, endDate)
 
                 await getRecording(
                     self.hass, tapoController, entry, device, date, startDate, endDate
@@ -134,9 +133,9 @@ class TapoMediaSource(MediaSource):
                 url = await getWebFile(
                     self.hass, entry, startDate, endDate, "videos", childID=childID
                 )
-                LOGGER.debug(url)
+                LOGGER.debug("Media URL: %s", url)
             except Exception as e:
-                LOGGER.error(e)
+                LOGGER.warning("Failed to resolve media URL: %s", e, exc_info=True)
                 raise Unresolvable(e)
 
             return PlayMedia(url, "video/mp4")

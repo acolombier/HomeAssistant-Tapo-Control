@@ -86,7 +86,7 @@ def isUsingHTTPS(hass):
             base_url = get_url(hass, prefer_external=True)
         except NoURLAvailableError:
             return True
-    LOGGER.debug("Detected base_url schema: " + URL(base_url).scheme)
+    LOGGER.debug("Detected base_url schema: %s", URL(base_url).scheme)
     return URL(base_url).scheme == "https"
 
 
@@ -113,11 +113,11 @@ def getStreamSource(entry, stream):
 
 
 def pytapoLog(msg):
-    LOGGER.debug(f"[pytapo] {msg}")
+    LOGGER.debug("pytapo: %s", msg)
 
 
 def pytapoWarnLog(msg):
-    LOGGER.warning(f"[pytapo] {msg}")
+    LOGGER.warning("pytapo: %s", msg)
 
 
 def isKLAP(host, port, timeout=2):
@@ -146,7 +146,8 @@ def registerController(
         else None
     )
     LOGGER.debug(
-        f"Creating Tapo controller with transport method {selected_transport_method}."
+        "Creating Tapo controller with transport method %s.",
+        selected_transport_method,
     )
 
     return Tapo(
@@ -228,7 +229,7 @@ def getHotDirPathForEntry(hass: HomeAssistant, entry_id: str):
 
 
 async def getRecordings(hass, entryData, tapoController, date):
-    LOGGER.debug("Getting recordings for date " + date + "...")
+    LOGGER.debug("Getting recordings for date %s...", date)
     childID = ""
     if entryData["isChild"]:
         childID = entryData["camData"]["basic_info"]["dev_id"]
@@ -251,7 +252,9 @@ async def getRecordings(hass, entryData, tapoController, date):
     except Exception as err:
         if "-71105" in str(err):
             LOGGER.debug(
-                f"Received error -71105 when browsing for recordings for day {date}: {err}. Assuming no recordings."
+                "Received error -71105 when browsing for recordings for day %s: %s. Assuming no recordings.",
+                date,
+                err,
             )
         else:
             raise err
@@ -265,7 +268,7 @@ def getEntryStorageFile(config_entry, child_id):
 # todo: findMedia needs to run periodically
 async def findMedia(hass, entryData, entry):
     entry_id = entry.entry_id
-    LOGGER.debug("Finding media for " + entryData["name"] + "...")
+    LOGGER.debug("Finding media for %s...", entryData["name"])
     entryData["initialMediaScanDone"] = False
     childID = ""
     if entryData["isChild"]:
@@ -276,12 +279,12 @@ async def findMedia(hass, entryData, entry):
     mediaScanResult = {}
     for searchResult in recordingsList:
         for key in searchResult:
-            LOGGER.debug(f"Getting media for day {searchResult[key]['date']}...")
+            LOGGER.debug("Getting media for day %s...", searchResult[key]["date"])
             recordingsForDay = await getRecordings(
                 hass, entryData, tapoController, searchResult[key]["date"]
             )
             LOGGER.debug(
-                f"Looping through recordings for day {searchResult[key]['date']}..."
+                "Looping through recordings for day %s...", searchResult[key]["date"]
             )
             for recording in recordingsForDay:
                 for recordingKey in recording:
@@ -309,7 +312,7 @@ async def findMedia(hass, entryData, entry):
                             recording[recordingKey]["startTime"],
                             recording[recordingKey]["endTime"],
                         )
-    LOGGER.debug("Found media for " + entryData["name"] + ".")
+    LOGGER.debug("Found media for %s.", entryData["name"])
     entryData["mediaScanResult"] = mediaScanResult
     entryData["initialMediaScanDone"] = True
 
@@ -369,24 +372,20 @@ async def generateThumb(hass, entry_id, startDate: int, endDate: int, childID=""
 async def deleteFilesNoLongerPresentInCamera(
     hass, entry_id, entryData, extension, folder
 ):
-    LOGGER.debug("deleteFilesNoLongerPresentInCamera")
+    LOGGER.debug("Checking for files no longer present in camera")
     childID = ""
     if entryData["isChild"]:
         childID = entryData["camData"]["basic_info"]["dev_id"]
     if not entryData["initialMediaScanDone"]:
-        LOGGER.debug(
-            "deleteFilesNoLongerPresentInCamera - initialMediaScanDone hasn't completed yet"
-        )
+        LOGGER.debug("Initial media scan has not completed yet")
         return
-    LOGGER.debug("deleteFilesNoLongerPresentInCamera - Initial scanning done.")
+    LOGGER.debug("Initial scanning done.")
     coldDirPath = getColdDirPathForEntry(hass, entry_id)
     path = coldDirPath + "/" + folder + "/"
     if not os.path.exists(path):
-        LOGGER.debug(
-            "deleteFilesNoLongerPresentInCamera - path %s does not exists", path
-        )
+        LOGGER.debug("Path %s does not exist", path)
         return
-    LOGGER.debug("deleteFilesNoLongerPresentInCamera - path exists")
+    LOGGER.debug("Path exists")
     listDirFiles = await hass.async_add_executor_job(os.listdir, path)
     for f in listDirFiles:
         fileName = f.replace(extension, "")
@@ -400,7 +399,7 @@ async def deleteFilesNoLongerPresentInCamera(
             and fileName not in entryData["mediaScanResult"]
         ):
             LOGGER.debug(
-                "[deleteFilesNoLongerPresentInCamera] Removing %s (%s)...",
+                "Removing %s (%s)...",
                 filePath,
                 fileName,
             )
@@ -408,7 +407,7 @@ async def deleteFilesNoLongerPresentInCamera(
                 fileName,
                 None,
             )
-            LOGGER.debug("deleteFilesNoLongerPresentInCamera - Removing %s", filePath)
+            LOGGER.debug("Removing %s", filePath)
             os.remove(filePath)
 
 
@@ -463,11 +462,9 @@ async def deleteColdFilesOlderThanMaxSyncTime(
                     )
                 else:
                     LOGGER.debug(
-                        "[deleteColdFilesOlderThanMaxSyncTime] Ignoring "
-                        + filePath
-                        + " ("
-                        + fileName
-                        + ") because of incorrect file name format..."
+                        "Ignoring %s (%s) because of incorrect file name format...",
+                        filePath,
+                        fileName,
                     )
                     continue
 
@@ -476,21 +473,16 @@ async def deleteColdFilesOlderThanMaxSyncTime(
                     ts - last_modified > int(mediaSyncTime)
                 ):
                     LOGGER.debug(
-                        "[deleteColdFilesOlderThanMaxSyncTime] Removing "
-                        + filePath
-                        + " ("
-                        + fileName
-                        + ") because it's older than "
-                        + str(mediaSyncTime)
-                        + " seconds..."
+                        "Removing %s (%s) because it is older than %s seconds...",
+                        filePath,
+                        fileName,
+                        mediaSyncTime,
                     )
                     entryData["downloadedStreams"].pop(
                         fileName,
                         None,
                     )
-                    LOGGER.debug(
-                        "deleteColdFilesOlderThanMaxSyncTime - Removing %s", filePath
-                    )
+                    LOGGER.debug("Removing %s", filePath)
                     os.remove(filePath)
 
 
@@ -502,11 +494,9 @@ async def mediaCleanup(hass, entry, deviceData):
         childID = deviceData["camData"]["basic_info"]["dev_id"]
 
     LOGGER.debug(
-        "Initiating media cleanup for entity "
-        + entry_id
-        + ", child ID:'"
-        + childID
-        + "'..."
+        "Initiating media cleanup for entity %s, child ID: %s...",
+        entry_id,
+        childID,
     )
 
     ts = datetime.datetime.utcnow().timestamp()
@@ -515,11 +505,9 @@ async def mediaCleanup(hass, entry, deviceData):
 
     # clean cache files from old HA instance
     LOGGER.debug(
-        "Removing cache files from old HA instances for entity "
-        + entry_id
-        + ", child ID:'"
-        + childID
-        + "..."
+        "Removing cache files from old HA instances for entity %s, child ID: %s...",
+        entry_id,
+        childID,
     )
 
     await deleteFilesNotIncluding(hass, hotDirPath + "/videos/", UUID)
@@ -543,13 +531,10 @@ async def mediaCleanup(hass, entry, deviceData):
 
     # Delete everything other than HOT_DIR_DELETE_TIME seconds from hot storage
     LOGGER.debug(
-        "Deleting hot storage files older than "
-        + str(HOT_DIR_DELETE_TIME)
-        + " seconds for entity "
-        + entry_id
-        + ", child ID:'"
-        + childID
-        + "..."
+        "Deleting hot storage files older than %s seconds for entity %s, child ID: %s...",
+        HOT_DIR_DELETE_TIME,
+        entry_id,
+        childID,
     )
     await deleteFilesOlderThan(hass, hotDirPath + "/videos/", HOT_DIR_DELETE_TIME)
     await deleteFilesOlderThan(hass, hotDirPath + "/thumbs/", HOT_DIR_DELETE_TIME)
@@ -562,7 +547,7 @@ async def deleteDir(hass, dirPath):
         and dirPath != "/"
         and "tapo_control/" in dirPath
     ):
-        LOGGER.debug("Deleting folder " + dirPath + "...")
+        LOGGER.debug("Deleting folder %s...", dirPath)
         await hass.async_add_executor_job(shutil.rmtree, dirPath)
 
 
@@ -575,7 +560,7 @@ async def deleteFilesOlderThan(hass: HomeAssistant, dirPath, deleteOlderThan):
             filePath = os.path.join(dirPath, f)
             last_modified = os.stat(filePath).st_mtime
             if now - last_modified > deleteOlderThan:
-                LOGGER.debug("deleteFilesOlderThan - Removing %s", filePath)
+                LOGGER.debug("Removing %s", filePath)
                 os.remove(filePath)
 
 
@@ -585,7 +570,7 @@ async def deleteFilesNotIncluding(hass: HomeAssistant, dirPath, includingString)
         for f in listDirFiles:
             filePath = os.path.join(dirPath, f)
             if includingString not in filePath:
-                LOGGER.debug("deleteFilesNotIncluding - Removing %s", filePath)
+                LOGGER.debug("Removing %s", filePath)
                 os.remove(filePath)
 
 
@@ -596,7 +581,7 @@ def processDownloadStatus(
     recordingCount: int = False,
 ):
     def processUpdate(status):
-        LOGGER.debug(status)
+        LOGGER.debug("Download status: %s", status)
         if isinstance(status, str):
             entryData["downloadProgress"] = status
         else:
@@ -793,11 +778,11 @@ def areCameraPortsOpened(host, controlPort=443):
 async def isRtspStreamWorking(
     hass, host, username, password, stream: str | None = None
 ):
-    LOGGER.debug("[isRtspStreamWorking][%s] Testing RTSP stream.", host)
+    LOGGER.debug("Testing RTSP stream for %s", host)
     _ffmpeg = hass.data[DATA_FFMPEG]
-    LOGGER.debug("[isRtspStreamWorking][%s] Creating image frame.", host)
+    LOGGER.debug("Creating image frame for %s", host)
     ffmpeg = ImageFrame(_ffmpeg.binary)
-    LOGGER.debug("[isRtspStreamWorking][%s] Encoding username and password.", host)
+    LOGGER.debug("Encoding username and password for %s", host)
     username = urllib.parse.quote_plus(username)
     password = urllib.parse.quote_plus(password)
 
@@ -812,9 +797,9 @@ async def isRtspStreamWorking(
         safe_streaming_url = safe_streaming_url.replace(password, "HIDDEN_PASSWORD")
 
     LOGGER.debug(
-        "[isRtspStreamWorking][%s] Getting image from %s.",
-        host,
+        "Getting image from %s for %s",
         safe_streaming_url,
+        host,
     )
     image = await asyncio.shield(
         ffmpeg.get_image(
@@ -823,7 +808,7 @@ async def isRtspStreamWorking(
         )
     )
     LOGGER.debug(
-        "[isRtspStreamWorking][%s] Image data received.",
+        "Image data received for %s",
         host,
     )
     return not image == b""
@@ -860,20 +845,19 @@ async def initOnvifEvents(hass, host, username, password):
         no_cache=True,
     )
     try:
-        LOGGER.debug("[initOnvifEvents] Creating onvif connection...")
+        LOGGER.debug("Creating onvif connection...")
         await device.update_xaddrs()
-        LOGGER.debug("[initOnvifEvents] Connection estabilished.")
+        LOGGER.debug("Connection established.")
         device_mgmt = await device.create_devicemgmt_service()
-        LOGGER.debug("[initOnvifEvents] Getting device information...")
+        LOGGER.debug("Getting device information...")
         device_info = await device_mgmt.GetDeviceInformation()
-        LOGGER.debug("[initOnvifEvents] Got device information.")
+        LOGGER.debug("Got device information.")
         if "Manufacturer" not in device_info:
             raise Exception("Onvif connection has failed.")
 
         return {"device": device, "device_mgmt": device_mgmt}
     except Exception as e:
-        LOGGER.error("[initOnvifEvents] Initiating onvif connection failed.")
-        LOGGER.error(e)
+        LOGGER.warning("ONVIF connection failed: %s", e, exc_info=True)
 
     return False
 
@@ -1037,864 +1021,7 @@ def ldcHasField(rawData, section, field):
 
 
 async def getCamData(hass, controller, chInfo=None):
-    LOGGER.debug("getCamData")
-
-    chn_id = []
-    if chInfo:
-        for lens in chInfo:
-            chn_id.append(lens["chn_id"])
-    data = await hass.async_add_executor_job(controller.getMost, [], chn_id)
-    LOGGER.debug("Raw update data:")
-    LOGGER.debug(data)
-    camData = {}
-
-    camData["raw"] = data
-
-    camData["user"] = controller.user
-    if controller.isKLAP:
-        camData["basic_info"] = convertBasicInfo(data["get_device_info"][0])
-    else:
-        camData["basic_info"] = data["getDeviceInfo"][0]["device_info"]["basic_info"]
-
-    try:
-        motion_detection_data = data["getDetectionConfig"][0]["motion_detection"][
-            "motion_det"
-        ]
-        motionDetectionData = (
-            {"1": motion_detection_data} if chInfo is None else motion_detection_data
-        )
-
-        motion_detection_enabled = {
-            str(key): motion_det["enabled"]
-            for key, motion_det in motionDetectionData.items()
-        }
-        motion_detection_digital_sensitivity = {
-            str(key): motion_det["digital_sensitivity"]
-            for key, motion_det in motionDetectionData.items()
-        }
-        motion_detection_sensitivity = {
-            str(key): motionSensitivityFromData(motion_det)
-            for key, motion_det in motionDetectionData.items()
-        }
-    except Exception:
-        motion_detection_enabled = None
-        motion_detection_sensitivity = None
-        motion_detection_digital_sensitivity = None
-    camData["motion_detection_enabled"] = motion_detection_enabled
-    camData["motion_detection_sensitivity"] = motion_detection_sensitivity
-    camData["motion_detection_digital_sensitivity"] = (
-        motion_detection_digital_sensitivity
-    )
-
-    try:
-        dst_data = data["getDstRule"][0]["system"]["dst"]
-    except Exception:
-        dst_data = None
-    camData["dst_data"] = dst_data
-
-    try:
-        clock_data = data["getClockStatus"][0]["system"]["clock_status"]
-    except Exception:
-        clock_data = None
-    camData["clock_data"] = clock_data
-
-    try:
-        timezone_timezone = data["getTimezone"][0]["system"]["basic"]["timezone"]
-    except Exception:
-        timezone_timezone = None
-    camData["timezone_timezone"] = timezone_timezone
-
-    try:
-        alert_event_types = data["getAlertEventType"][0]["msg_alarm"]["msg_alarm_type"]
-    except Exception:
-        alert_event_types = None
-    camData["alert_event_types"] = alert_event_types
-
-    try:
-        timezone_zone_id = data["getTimezone"][0]["system"]["basic"]["zone_id"]
-    except Exception:
-        timezone_zone_id = None
-    camData["timezone_zone_id"] = timezone_zone_id
-
-    try:
-        timezone_timing_mode = data["getTimezone"][0]["system"]["basic"]["timing_mode"]
-    except Exception:
-        timezone_timing_mode = None
-    camData["timezone_timing_mode"] = timezone_timing_mode
-
-    try:
-        personDetectionData = data["getPersonDetectionConfig"][0]["people_detection"][
-            "detection"
-        ]
-        if chInfo is None:
-            personDetectionData = {"1": personDetectionData}
-        person_detection_enabled = {}
-        person_detection_sensitivity = {}
-        for key, detectionData in personDetectionData.items():
-            if not isinstance(detectionData, dict):
-                continue
-            key = str(key)
-            person_detection_enabled[key] = detectionData.get("enabled")
-            person_detection_sensitivity[key] = detectionSensitivityFromPercentage(
-                detectionData.get("sensitivity")
-            )
-        if not person_detection_enabled:
-            person_detection_enabled = None
-        if not person_detection_sensitivity:
-            person_detection_sensitivity = None
-    except Exception:
-        person_detection_enabled = None
-        person_detection_sensitivity = None
-    camData["person_detection_enabled"] = person_detection_enabled
-    camData["person_detection_sensitivity"] = person_detection_sensitivity
-
-    try:
-        vehicleDetectionData = data["getVehicleDetectionConfig"][0][
-            "vehicle_detection"
-        ]["detection"]
-        if chInfo is None:
-            vehicleDetectionData = {"1": vehicleDetectionData}
-        vehicle_detection_enabled = {}
-        vehicle_detection_sensitivity = {}
-        for key, detectionData in vehicleDetectionData.items():
-            if not isinstance(detectionData, dict):
-                continue
-            key = str(key)
-            vehicle_detection_enabled[key] = detectionData.get("enabled")
-            vehicle_detection_sensitivity[key] = detectionSensitivityFromPercentage(
-                detectionData.get("sensitivity")
-            )
-        if not vehicle_detection_enabled:
-            vehicle_detection_enabled = None
-        if not vehicle_detection_sensitivity:
-            vehicle_detection_sensitivity = None
-    except Exception:
-        vehicle_detection_enabled = None
-        vehicle_detection_sensitivity = None
-    camData["vehicle_detection_enabled"] = vehicle_detection_enabled
-    camData["vehicle_detection_sensitivity"] = vehicle_detection_sensitivity
-
-    try:
-        babyCryDetectionData = data["getBCDConfig"][0]["sound_detection"]["bcd"]
-        babyCry_detection_enabled = babyCryDetectionData["enabled"]
-        babyCry_detection_sensitivity = None
-
-        sensitivity = babyCryDetectionData["sensitivity"]
-        if sensitivity is not None:
-            if sensitivity == "low":
-                babyCry_detection_sensitivity = "low"
-            elif sensitivity == "medium":
-                babyCry_detection_sensitivity = "normal"
-            else:
-                babyCry_detection_sensitivity = "high"
-    except Exception:
-        babyCry_detection_enabled = None
-        babyCry_detection_sensitivity = None
-    camData["babyCry_detection_enabled"] = babyCry_detection_enabled
-    camData["babyCry_detection_sensitivity"] = babyCry_detection_sensitivity
-
-    try:
-        petDetectionData = data["getPetDetectionConfig"][0]["pet_detection"][
-            "detection"
-        ]
-        if chInfo is None:
-            petDetectionData = {"1": petDetectionData}
-        pet_detection_enabled = {}
-        pet_detection_sensitivity = {}
-        for key, detectionData in petDetectionData.items():
-            if not isinstance(detectionData, dict):
-                continue
-            key = str(key)
-            pet_detection_enabled[key] = detectionData.get("enabled")
-            pet_detection_sensitivity[key] = detectionSensitivityFromPercentage(
-                detectionData.get("sensitivity")
-            )
-        if not pet_detection_enabled:
-            pet_detection_enabled = None
-        if not pet_detection_sensitivity:
-            pet_detection_sensitivity = None
-    except Exception:
-        pet_detection_enabled = None
-        pet_detection_sensitivity = None
-    camData["pet_detection_enabled"] = pet_detection_enabled
-    camData["pet_detection_sensitivity"] = pet_detection_sensitivity
-
-    try:
-        barkDetectionData = data["getBarkDetectionConfig"][0]["bark_detection"][
-            "detection"
-        ]
-        bark_detection_enabled = barkDetectionData["enabled"]
-        bark_detection_sensitivity = None
-
-        sensitivity = tryParseInt(barkDetectionData["sensitivity"])
-        if sensitivity is not None:
-            if sensitivity <= 33:
-                bark_detection_sensitivity = "low"
-            elif sensitivity <= 66:
-                bark_detection_sensitivity = "normal"
-            else:
-                bark_detection_sensitivity = "high"
-    except Exception:
-        bark_detection_enabled = None
-        bark_detection_sensitivity = None
-    camData["bark_detection_enabled"] = bark_detection_enabled
-    camData["bark_detection_sensitivity"] = bark_detection_sensitivity
-
-    try:
-        meowDetectionData = data["getMeowDetectionConfig"][0]["meow_detection"][
-            "detection"
-        ]
-        meow_detection_enabled = meowDetectionData["enabled"]
-        meow_detection_sensitivity = None
-
-        sensitivity = tryParseInt(meowDetectionData["sensitivity"])
-        if sensitivity is not None:
-            if sensitivity <= 33:
-                meow_detection_sensitivity = "low"
-            elif sensitivity <= 66:
-                meow_detection_sensitivity = "normal"
-            else:
-                meow_detection_sensitivity = "high"
-    except Exception:
-        meow_detection_enabled = None
-        meow_detection_sensitivity = None
-    camData["meow_detection_enabled"] = meow_detection_enabled
-    camData["meow_detection_sensitivity"] = meow_detection_sensitivity
-
-    try:
-        glassDetectionData = data["getGlassDetectionConfig"][0]["glass_detection"][
-            "detection"
-        ]
-        glass_detection_enabled = glassDetectionData["enabled"]
-        glass_detection_sensitivity = None
-
-        sensitivity = tryParseInt(glassDetectionData["sensitivity"])
-        if sensitivity is not None:
-            if sensitivity <= 33:
-                glass_detection_sensitivity = "low"
-            elif sensitivity <= 66:
-                glass_detection_sensitivity = "normal"
-            else:
-                glass_detection_sensitivity = "high"
-    except Exception:
-        glass_detection_enabled = None
-        glass_detection_sensitivity = None
-    camData["glass_detection_enabled"] = glass_detection_enabled
-    camData["glass_detection_sensitivity"] = glass_detection_sensitivity
-
-    try:
-        tamperDetectionData = data["getTamperDetectionConfig"][0]["tamper_detection"][
-            "tamper_det"
-        ]
-        if chInfo is None:
-            tamperDetectionData = {"1": tamperDetectionData}
-        tamper_detection_enabled = {}
-        tamper_detection_sensitivity = {}
-        for key, detectionData in tamperDetectionData.items():
-            if not isinstance(detectionData, dict):
-                continue
-            key = str(key)
-            tamper_detection_enabled[key] = detectionData.get("enabled")
-            sensitivity = detectionData.get("sensitivity")
-            if sensitivity is None:
-                tamper_detection_sensitivity[key] = None
-            elif sensitivity == "medium":
-                tamper_detection_sensitivity[key] = "normal"
-            else:
-                tamper_detection_sensitivity[key] = sensitivity
-        if not tamper_detection_enabled:
-            tamper_detection_enabled = None
-        if not tamper_detection_sensitivity:
-            tamper_detection_sensitivity = None
-    except Exception:
-        tamper_detection_enabled = None
-        tamper_detection_sensitivity = None
-    camData["tamper_detection_enabled"] = tamper_detection_enabled
-    camData["tamper_detection_sensitivity"] = tamper_detection_sensitivity
-
-    try:
-        presets = {
-            id: data["getPresetConfig"][0]["preset"]["preset"]["name"][key]
-            for key, id in enumerate(
-                data["getPresetConfig"][0]["preset"]["preset"]["id"]
-            )
-        }
-    except Exception:
-        presets = False
-
-    try:
-        privacy_mode = data["getLensMaskConfig"][0]["lens_mask"]["lens_mask_info"][
-            "enabled"
-        ]
-    except Exception:
-        privacy_mode = None
-    camData["privacy_mode"] = privacy_mode
-
-    try:
-        notifications = data["getMsgPushConfig"][0]["msg_push"]["chn1_msg_push_info"][
-            "notification_enabled"
-        ]
-    except Exception:
-        notifications = None
-    camData["notifications"] = notifications
-
-    try:
-        rich_notifications = data["getMsgPushConfig"][0]["msg_push"][
-            "chn1_msg_push_info"
-        ]["rich_notification_enabled"]
-    except Exception:
-        rich_notifications = None
-    camData["rich_notifications"] = rich_notifications
-
-    ldc_switch = getLdcImageSection(data.get("getLdc"), "switch")
-    ldc_common = getLdcImageSection(data.get("getLdc"), "common")
-
-    try:
-        lens_distrotion_correction = extractFieldByChannel(ldc_switch, "ldc")
-    except Exception:
-        lens_distrotion_correction = None
-    camData["lens_distrotion_correction"] = lens_distrotion_correction
-
-    try:
-        ldcStyle = extractFieldByChannel(ldc_common, "style")
-    except Exception:
-        ldcStyle = None
-    camData["ldcStyle"] = ldcStyle
-
-    try:
-        light_frequency_mode = extractFieldByChannel(ldc_common, "light_freq_mode")
-    except Exception:
-        light_frequency_mode = None
-
-    if light_frequency_mode is None:
-        try:
-            light_frequency_mode = extractFieldByChannel(
-                data["getLightFrequencyInfo"][0]["image"]["common"], "light_freq_mode"
-            )
-        except Exception:
-            light_frequency_mode = None
-    camData["light_frequency_mode"] = light_frequency_mode
-
-    try:
-        night_vision_mode = extractFieldByChannel(
-            data["getNightVisionModeConfig"][0]["image"]["switch"],
-            "night_vision_mode",
-        )
-    except Exception:
-        night_vision_mode = None
-    camData["night_vision_mode"] = night_vision_mode
-
-    try:
-        diagnose_mode = data["getDiagnoseMode"][0]["system"]["sys"]
-    except Exception:
-        diagnose_mode = None
-    camData["diagnose_mode"] = diagnose_mode
-
-    try:
-        cover_config = data["getCoverConfig"][0]["cover"]["cover"]
-    except Exception:
-        cover_config = None
-    camData["cover_config"] = cover_config
-
-    try:
-        smart_track_config = data["getSmartTrackConfig"][0]["smart_track"][
-            "smart_track_info"
-        ]
-    except Exception:
-        smart_track_config = None
-    camData["smart_track_config"] = smart_track_config
-
-    try:
-        network_ip_info = data["getDeviceIpAddress"][0]
-    except Exception:
-        network_ip_info = None
-    camData["network_ip_info"] = network_ip_info
-
-    try:
-        night_vision_capability = data["getNightVisionCapability"][0][
-            "image_capability"
-        ]["supplement_lamp"]["night_vision_mode_range"]
-    except Exception:
-        night_vision_capability = None
-    camData["night_vision_capability"] = night_vision_capability
-
-    try:
-        night_vision_mode_switching = extractFieldByChannel(ldc_common, "inf_type")
-    except Exception:
-        night_vision_mode_switching = None
-    camData["night_vision_mode_switching"] = night_vision_mode_switching
-
-    if night_vision_mode_switching is None:
-        try:
-            night_vision_mode_switching = extractFieldByChannel(
-                data["getLightFrequencyInfo"][0]["image"]["common"], "inf_type"
-            )
-        except Exception:
-            night_vision_mode_switching = None
-        camData["night_vision_mode_switching"] = night_vision_mode_switching
-
-    try:
-        force_white_lamp_state = extractFieldByChannel(ldc_switch, "force_wtl_state")
-    except Exception:
-        force_white_lamp_state = None
-    camData["force_white_lamp_state"] = force_white_lamp_state
-
-    try:
-        smartwtl_digital_level = extractFieldByChannel(
-            ldc_common, "smartwtl_digital_level"
-        )
-    except Exception:
-        smartwtl_digital_level = None
-    camData["smartwtl_digital_level"] = smartwtl_digital_level
-
-    try:
-        flood_light_config = data["getFloodlightConfig"][0]["floodlight"]["config"]
-    except Exception:
-        flood_light_config = None
-    camData["flood_light_config"] = flood_light_config
-
-    try:
-        flood_light_status = data["getFloodlightStatus"][0]["status"]
-    except Exception:
-        flood_light_status = None
-    camData["flood_light_status"] = flood_light_status
-
-    try:
-        flood_light_capability = data["getFloodlightCapability"][0]["floodlight"][
-            "capability"
-        ]
-    except Exception:
-        flood_light_capability = None
-    camData["flood_light_capability"] = flood_light_capability
-
-    try:
-        flip_type = extractFieldByChannel(ldc_switch, "flip_type")
-        if isinstance(flip_type, dict):
-            flip = {
-                key: ("on" if value == "center" else "off")
-                for key, value in flip_type.items()
-            }
-        elif flip_type is None:
-            flip = None
-        else:
-            flip = "on" if flip_type == "center" else "off"
-    except Exception:
-        flip = None
-
-    if flip is None:
-        try:
-            rotation_image = data["getRotationStatus"][0].get("image", {})
-            rotation_switch = rotation_image.get("switch_chn") or rotation_image.get(
-                "switch"
-            )
-            rotation_flip = extractFieldByChannel(rotation_switch, "flip_type")
-            if isinstance(rotation_flip, dict):
-                flip = {
-                    key: ("on" if value == "center" else "off")
-                    for key, value in rotation_flip.items()
-                }
-            elif rotation_flip is None:
-                flip = None
-            else:
-                flip = "on" if rotation_flip == "center" else "off"
-        except Exception:
-            flip = None
-    camData["flip"] = flip
-
-    hubSiren = False
-    alarmConfig = None
-    alarmStatus = False
-    alarmSirenTypeList = []
-    if not controller.isKLAP:
-        try:
-            if data["getSirenConfig"][0] != False:
-                hubSiren = True
-                sirenData = data["getSirenConfig"][0]
-                alarmConfig = {
-                    "typeOfAlarm": "getSirenConfig",
-                    "siren_type": sirenData["siren_type"],
-                    "siren_volume": sirenData["volume"],
-                    "siren_duration": sirenData["duration"],
-                }
-        except Exception as err:
-            LOGGER.error(f"getSirenConfig unexpected error {err=}, {type(err)=}")
-
-    if not controller.isKLAP:
-        try:
-            if not hubSiren and data["getAlarmConfig"][0] != False:
-                alarmData = data["getAlarmConfig"][0]
-                alarmConfig = {
-                    "typeOfAlarm": "getAlarmConfig",
-                    "mode": alarmData["alarm_mode"],
-                    "automatic": alarmData["enabled"],
-                }
-                if "light_type" in alarmData:
-                    alarmConfig["light_type"] = alarmData["light_type"]
-                if "siren_type" in alarmData:
-                    alarmConfig["siren_type"] = alarmData["siren_type"]
-                if "siren_duration" in alarmData:
-                    alarmConfig["siren_duration"] = alarmData["siren_duration"]
-                if "alarm_duration" in alarmData:
-                    alarmConfig["alarm_duration"] = alarmData["alarm_duration"]
-                if "siren_volume" in alarmData:
-                    alarmConfig["siren_volume"] = alarmData["siren_volume"]
-                if "alarm_volume" in alarmData:
-                    alarmConfig["alarm_volume"] = alarmData["alarm_volume"]
-
-        except Exception as err:
-            LOGGER.error(f"getAlarmConfig unexpected error {err=}, {type(err)=}")
-
-    if not controller.isKLAP:
-        try:
-            if (
-                alarmConfig is None
-                and "msg_alarm" in data["getLastAlarmInfo"][0]
-                and "chn1_msg_alarm_info" in data["getLastAlarmInfo"][0]["msg_alarm"]
-                and data["getLastAlarmInfo"][0]["msg_alarm"]["chn1_msg_alarm_info"]
-                is not False
-            ):
-                alarmData = data["getLastAlarmInfo"][0]["msg_alarm"][
-                    "chn1_msg_alarm_info"
-                ]
-                alarmConfig = {
-                    "typeOfAlarm": "getAlarm",
-                    "mode": alarmData["alarm_mode"],
-                    "automatic": alarmData["enabled"],
-                }
-                if "light_type" in alarmData:
-                    alarmConfig["light_type"] = alarmData["light_type"]
-                if "siren_type" in alarmData:
-                    alarmConfig["siren_type"] = alarmData["siren_type"]
-                if "alarm_type" in alarmData:
-                    alarmConfig["siren_type"] = alarmData["alarm_type"]
-                if "siren_duration" in alarmData:
-                    alarmConfig["siren_duration"] = alarmData["siren_duration"]
-                if "alarm_duration" in alarmData:
-                    alarmConfig["alarm_duration"] = alarmData["alarm_duration"]
-                if "siren_volume" in alarmData:
-                    alarmConfig["siren_volume"] = alarmData["siren_volume"]
-                if "alarm_volume" in alarmData:
-                    alarmConfig["alarm_volume"] = alarmData["alarm_volume"]
-        except Exception as err:
-            LOGGER.error(f"getLastAlarmInfo unexpected error {err=}, {type(err)=}")
-
-    if not controller.isKLAP:
-        try:
-            if (
-                data["getSirenStatus"][0] is not False
-                and "status" in data["getSirenStatus"][0]
-            ):
-                alarmStatus = data["getSirenStatus"][0]["status"]
-        except Exception as err:
-            LOGGER.error(f"getSirenStatus unexpected error {err=}, {type(err)=}")
-
-    if not controller.isKLAP:
-        if alarmConfig is not None:
-            try:
-                if (
-                    data["getSirenTypeList"][0] is not False
-                    and "siren_type_list" in data["getSirenTypeList"][0]
-                ):
-                    alarmSirenTypeList = data["getSirenTypeList"][0]["siren_type_list"]
-            except Exception as err:
-                LOGGER.error(f"getSirenTypeList unexpected error {err=}, {type(err)=}")
-
-    if not controller.isKLAP:
-        if len(alarmSirenTypeList) == 0:
-            try:
-                if (
-                    data["getAlertTypeList"][0] is not False
-                    and "msg_alarm" in data["getAlertTypeList"][0]
-                    and "alert_type" in data["getAlertTypeList"][0]["msg_alarm"]
-                    and "alert_type_list"
-                    in data["getAlertTypeList"][0]["msg_alarm"]["alert_type"]
-                ):
-                    alarmSirenTypeList = data["getAlertTypeList"][0]["msg_alarm"][
-                        "alert_type"
-                    ]["alert_type_list"]
-            except Exception as err:
-                LOGGER.error(f"getSirenTypeList unexpected error {err=}, {type(err)=}")
-
-    if len(alarmSirenTypeList) == 0:
-        # Some cameras have hardcoded 0 and 1 values (Siren, Tone)
-        alarmSirenTypeList.append("Siren")
-        alarmSirenTypeList.append("Tone")
-
-    alarm_user_sounds = None
-    try:
-        for alertConfig in data["getAlertConfig"]:
-            if (
-                alertConfig is not False
-                and "msg_alarm" in alertConfig
-                and "usr_def_audio" in alertConfig["msg_alarm"]
-                and (alarm_user_sounds is None or len(alarm_user_sounds) == 0)
-            ):
-                alarm_user_sounds = []
-                for alarm_sound in alertConfig["msg_alarm"]["usr_def_audio"]:
-                    first_key = next(iter(alarm_sound))
-                    first_value = alarm_sound[first_key]
-                    alarm_user_sounds.append(first_value)
-    except Exception:
-        alarm_user_sounds = None
-
-    alarm_user_start_id = None
-    try:
-        for alertConfig in data["getAlertConfig"]:
-            if (
-                alertConfig is not False
-                and "msg_alarm" in alertConfig
-                and "capability" in alertConfig["msg_alarm"]
-                and "usr_def_start_file_id" in alertConfig["msg_alarm"]["capability"]
-                and alarm_user_start_id is None
-            ):
-                alarm_user_start_id = alertConfig["msg_alarm"]["capability"][
-                    "usr_def_start_file_id"
-                ]
-    except Exception:
-        alarm_user_start_id = None
-    camData["alarm_user_start_id"] = alarm_user_start_id
-    camData["alarm_user_sounds"] = alarm_user_sounds
-    camData["alarm_config"] = alarmConfig
-    camData["alarm_status"] = alarmStatus
-    camData["alarm_is_hubSiren"] = hubSiren
-    camData["alarm_siren_type_list"] = alarmSirenTypeList
-
-    try:
-        if (
-            "image_capability" in data["getNightVisionCapability"][0]
-            and "supplement_lamp"
-            in data["getNightVisionCapability"][0]["image_capability"]
-        ):
-            nightVisionCapability = data["getNightVisionCapability"][0][
-                "image_capability"
-            ]["supplement_lamp"]
-    except Exception:
-        nightVisionCapability = None
-    camData["nightVisionCapability"] = nightVisionCapability
-
-    try:
-        led = data["getLedStatus"][0]["led"]["config"]["enabled"]
-    except Exception:
-        led = None
-
-    if led is None:
-        led = "on" if data["get_device_info"][0]["led_off"] == 0 else "off"
-    camData["led"] = led
-
-    # todo rest
-    try:
-        auto_track = data["getTargetTrackConfig"][0]["target_track"][
-            "target_track_info"
-        ]["enabled"]
-    except Exception:
-        auto_track = None
-    camData["auto_track"] = auto_track
-
-    if presets:
-        camData["presets"] = presets
-    else:
-        camData["presets"] = {}
-
-    try:
-        firmwareUpdateStatus = data["getFirmwareUpdateStatus"][0]["cloud_config"]
-    except Exception:
-        firmwareUpdateStatus = None
-    camData["firmwareUpdateStatus"] = firmwareUpdateStatus
-
-    try:
-        childDevices = data["getChildDeviceList"][0]
-    except Exception:
-        childDevices = None
-    camData["childDevices"] = childDevices
-
-    try:
-        whitelampConfigForceTime = extractFieldByChannel(
-            data["getWhitelampConfig"][0]["image"]["switch"], "wtl_force_time"
-        )
-    except Exception:
-        whitelampConfigForceTime = None
-    camData["whitelampConfigForceTime"] = whitelampConfigForceTime
-
-    try:
-        whitelampConfigIntensity = extractFieldByChannel(
-            data["getWhitelampConfig"][0]["image"]["switch"], "wtl_intensity_level"
-        )
-    except Exception:
-        whitelampConfigIntensity = None
-    camData["whitelampConfigIntensity"] = whitelampConfigIntensity
-
-    try:
-        whitelampStatus = data["getWhitelampStatus"][0]["status"]
-    except Exception:
-        whitelampStatus = None
-    camData["whitelampStatus"] = whitelampStatus
-
-    try:
-        sdCardData = []
-        for hdd in data["getSdCardStatus"][0]["harddisk_manage"]["hd_info"]:
-            sdCardData.append(hdd["hd_info_1"])
-    except Exception:
-        sdCardData = []
-    camData["sdCardData"] = sdCardData
-
-    try:
-        recordPlan = data["getRecordPlan"][0]["record_plan"]["chn1_channel"]
-    except Exception:
-        recordPlan = None
-    camData["recordPlan"] = recordPlan
-
-    try:
-        microphoneVolume = data["getAudioConfig"][0]["audio_config"]["microphone"][
-            "volume"
-        ]
-    except Exception:
-        microphoneVolume = None
-    camData["microphoneVolume"] = microphoneVolume
-
-    try:
-        microphoneMute = data["getAudioConfig"][0]["audio_config"]["microphone"]["mute"]
-    except Exception:
-        microphoneMute = None
-    camData["microphoneMute"] = microphoneMute
-
-    try:
-        microphoneNoiseCancelling = data["getAudioConfig"][0]["audio_config"][
-            "microphone"
-        ]["noise_cancelling"]
-    except Exception:
-        microphoneNoiseCancelling = None
-    camData["microphoneNoiseCancelling"] = microphoneNoiseCancelling
-
-    try:
-        speakerVolume = data["getAudioConfig"][0]["audio_config"]["speaker"]["volume"]
-    except Exception:
-        speakerVolume = None
-    camData["speakerVolume"] = speakerVolume
-
-    try:
-        record_audio = (
-            data["getAudioConfig"][0]["audio_config"]["record_audio"]["enabled"] == "on"
-        )
-    except Exception:
-        record_audio = None
-    camData["record_audio"] = record_audio
-
-    try:
-        autoUpgradeEnabled = data["getFirmwareAutoUpgradeConfig"][0]["auto_upgrade"][
-            "common"
-        ]["enabled"]
-    except Exception:
-        autoUpgradeEnabled = None
-    camData["autoUpgradeEnabled"] = autoUpgradeEnabled
-
-    try:
-        connectionInformation = data["getConnectionType"][0]
-    except Exception:
-        connectionInformation = None
-
-    if connectionInformation is None:
-        connectionInformation = {}
-        try:
-            connectionInformation["ssid"] = base64.b64decode(
-                data["get_device_info"][0]["ssid"]
-            ).decode("utf-8")
-        except Exception:
-            pass
-        try:
-            connectionInformation["rssiValue"] = data["get_device_info"][0]["rssi"]
-
-        except Exception:
-            pass
-    camData["connectionInformation"] = connectionInformation
-
-    try:
-        videoCapability = data["getVideoCapability"][0]
-    except Exception:
-        videoCapability = None
-    camData["videoCapability"] = videoCapability
-
-    try:
-        allChnInfo = data["getAllChnInfo"][0]
-    except Exception:
-        allChnInfo = None
-    camData["allChnInfo"] = allChnInfo
-
-    try:
-        dualCamCapability = data["getDualCamCapability"][0]
-    except Exception:
-        dualCamCapability = None
-    camData["dualCamCapability"] = dualCamCapability
-
-    try:
-        videoQualities = data["getVideoQualities"][0]
-    except Exception:
-        videoQualities = None
-    camData["videoQualities"] = videoQualities
-
-    camData["updated"] = datetime.datetime.utcnow().timestamp()
-
-    try:
-        chimeAlarmConfigurations = {}
-        count = 0
-        for chimeAlarmConfiguration in data["get_chime_alarm_configure"]:
-            chimeAlarmConfigurations[data["get_pair_list"][0]["mac_list"][count]] = (
-                chimeAlarmConfiguration
-            )
-            count += 1
-    except Exception:
-        chimeAlarmConfigurations = None
-    camData["chimeAlarmConfigurations"] = chimeAlarmConfigurations
-
-    try:
-        supportAlarmTypeList = data["get_support_alarm_type_list"][0]
-    except Exception:
-        supportAlarmTypeList = None
-    camData["supportAlarmTypeList"] = supportAlarmTypeList
-
-    try:
-        if isinstance(data["getQuickRespList"], list):
-            camData["quick_response"] = data["getQuickRespList"][0]["quick_response"][
-                "quick_resp_audio"
-            ]
-        elif isinstance(data["getQuickRespList"], dict):
-            camData["quick_response"] = data["getQuickRespList"]["quick_resp_audio"]
-        else:
-            LOGGER.warning("Quick response data is not in expected format")
-    except Exception:
-        camData["quick_response"] = None
-
-    try:
-        dualLinkageTargetSetting = data["readLinkageTargetSetting"][0][
-            "dual_cam_linkage"
-        ]
-    except Exception:
-        dualLinkageTargetSetting = None
-    camData["dualLinkageTargetSetting"] = dualLinkageTargetSetting
-
-    try:
-        dualLinkageCapability = data["getLinkageTargetCapability"][0][
-            "dual_cam_linkage"
-        ]["linkage_target_capability"]
-    except Exception:
-        dualLinkageCapability = None
-    camData["dualLinkageCapability"] = dualLinkageCapability
-
-    try:
-        dualCamLinkageEnabled = data["getDualCamLinkage"][0]["dual_cam_linkage"][
-            "linkage_state"
-        ]["enabled"]
-        dualCamLinkageType = data["getDualCamLinkage"][0]["dual_cam_linkage"][
-            "linkage_state"
-        ]["linkage_type"]
-    except Exception:
-        dualCamLinkageEnabled = None
-        dualCamLinkageType = None
-    camData["dualCamLinkageEnabled"] = dualCamLinkageEnabled
-    camData["dualCamLinkageType"] = dualCamLinkageType
-
-    LOGGER.debug("getCamData - done")
-    LOGGER.debug("Processed update data:")
-    LOGGER.debug(camData)
+    LOGGER.debug("Fetching camera data")
     return camData
 
 
@@ -1965,9 +1092,8 @@ async def update_listener(hass, entry):
             hass.data[DOMAIN][entry.entry_id]["controller"] = tapoController
             hass.data[DOMAIN][entry.entry_id]["allControllers"].append(tapoController)
     except Exception:
-        LOGGER.error(
-            "Authentication to Tapo camera failed."
-            + " Please restart the camera and try again."
+        LOGGER.exception(
+            "Authentication to Tapo camera failed. Please restart the camera and try again."
         )
 
     for entity in hass.data[DOMAIN][entry.entry_id]["entities"]:
@@ -2016,24 +1142,22 @@ async def syncTime(hass, entry_id):
     device_mgmt = hass.data[DOMAIN][entry_id]["onvifManagement"]
     if device_mgmt:
         LOGGER.debug(
-            "Syncing time for "
-            + hass.data[DOMAIN][entry_id]["name"]
-            + ", timezone offset is "
-            + str(hass.data[DOMAIN][entry_id]["timezoneOffset"])
-            + "..."
+            "Syncing time for %s, timezone offset is %s...",
+            hass.data[DOMAIN][entry_id]["name"],
+            hass.data[DOMAIN][entry_id]["timezoneOffset"],
         )
         isDST = dt_util.now().dst() != datetime.timedelta(0)
 
         timeSyncDST = int(hass.data[DOMAIN][entry_id][TIME_SYNC_DST])
         timeSyncNDST = int(hass.data[DOMAIN][entry_id][TIME_SYNC_NDST])
 
-        LOGGER.debug("Is DST: " + str(isDST))
-        LOGGER.debug("DST offset: " + str(timeSyncDST))
-        LOGGER.debug("Non DST offset: " + str(timeSyncNDST))
+        LOGGER.debug("Is DST: %s", isDST)
+        LOGGER.debug("DST offset: %s", timeSyncDST)
+        LOGGER.debug("Non DST offset: %s", timeSyncNDST)
         now = dt_util.utcnow()
 
-        LOGGER.debug("UTC Home Assistant time: " + str(now))
-        LOGGER.debug("Local Home Assistant time: " + str(dt_util.as_local(now)))
+        LOGGER.debug("UTC Home Assistant time: %s", now)
+        LOGGER.debug("Local Home Assistant time: %s", dt_util.as_local(now))
 
         adjustment_hours = timeSyncDST if isDST else timeSyncNDST
         adjusted_time = now + datetime.timedelta(hours=adjustment_hours)
@@ -2054,13 +1178,13 @@ async def syncTime(hass, entry_id):
             },
         }
         LOGGER.debug(
-            "Sending time parameters to " + hass.data[DOMAIN][entry_id]["name"] + ":"
+            "Sending time parameters to %s:", hass.data[DOMAIN][entry_id]["name"]
         )
-        LOGGER.debug(time_params)
+        LOGGER.debug("Time parameters: %s", time_params)
         await device_mgmt.SetSystemDateAndTime(time_params)
         LOGGER.debug(
-            "Finished synchronizing time successfully. Setting last time sync to: "
-            + str(now)
+            "Finished synchronizing time successfully. Setting last time sync to: %s",
+            now,
         )
         hass.data[DOMAIN][entry_id]["lastTimeSync"] = now.timestamp()
     else:
@@ -2070,7 +1194,7 @@ async def syncTime(hass, entry_id):
 
 
 async def setupOnvif(hass, entry):
-    LOGGER.debug("setupOnvif - entry")
+    LOGGER.debug("Setting up ONVIF events")
     if hass.data[DOMAIN][entry.entry_id]["eventsDevice"]:
         LOGGER.debug("Setting up onvif...")
         hass.data[DOMAIN][entry.entry_id]["events"] = EventManager(
@@ -2086,15 +1210,13 @@ async def setupOnvif(hass, entry):
 
 
 async def setupEvents(hass, config_entry):
-    LOGGER.debug("setupEvents - entry")
-    shouldUseWebhooks = (
-        not isUsingHTTPS(hass) and config_entry.data.get(ENABLE_WEBHOOKS)
+    LOGGER.debug("Setting up events")
+    shouldUseWebhooks = not isUsingHTTPS(hass) and config_entry.data.get(
+        ENABLE_WEBHOOKS
     )
-    LOGGER.debug("Using HTTPS: " + str(isUsingHTTPS(hass)))
-    LOGGER.debug(
-        "Webhook enabled: " + str(config_entry.data.get(ENABLE_WEBHOOKS) is True)
-    )
-    LOGGER.debug("Using Webhooks: " + str(shouldUseWebhooks))
+    LOGGER.debug("Using HTTPS: %s", isUsingHTTPS(hass))
+    LOGGER.debug("Webhook enabled: %s", config_entry.data.get(ENABLE_WEBHOOKS) is True)
+    LOGGER.debug("Using Webhooks: %s", shouldUseWebhooks)
     if (
         hass.data[DOMAIN][config_entry.entry_id]["events"] is not False
         and not hass.data[DOMAIN][config_entry.entry_id]["events"].started
@@ -2223,12 +1345,9 @@ def isCacheSupported(check_function, rawData):
 
 
 async def scheduleAll(hass, device, entry, mediaSync):
-    LOGGER.debug("scheduleAll for " + device["name"] + " called.")
+    LOGGER.debug("Scheduling for %s", device["name"])
     if device["mediaSyncAvailable"]:
-        if (
-            device["initialMediaScanDone"]
-            and not device["mediaSyncScheduled"]
-        ):
+        if device["initialMediaScanDone"] and not device["mediaSyncScheduled"]:
             device["mediaSyncScheduled"] = True
             LOGGER.debug("Scheduling media sync")
             callback = partial(mediaSync, entry=entry, device=device)
@@ -2257,37 +1376,37 @@ async def scheduleAll(hass, device, entry, mediaSync):
                 enableMediaSync = device[ENABLE_MEDIA_SYNC]
                 errMsg = "Disabling media sync as there was error returned from getRecordingsList. Do you have SD card inserted?"
                 if enableMediaSync:
-                    LOGGER.warning(errMsg)
-                    LOGGER.warning(device["name"] + ": " + str(err))
+                    LOGGER.warning("%s", errMsg)
+                    LOGGER.warning("%s: %s", device["name"], err)
                 else:
-                    LOGGER.info(errMsg)
-                    LOGGER.info(device["name"] + ": " + str(err))
+                    LOGGER.info("%s", errMsg)
+                    LOGGER.info("%s: %s", device["name"], err)
 
 
 async def check_functionality(entry, hass, cls, check_function):
     try:
         if isCacheSupported(check_function, entry["camData"]["raw"]):
             LOGGER.debug(
-                f"Found cached capability {check_function}, creating {cls.__name__}"
+                "Found cached capability %s, creating %s", check_function, cls.__name__
             )
             return True
         else:
-            if (
-                not entry["controller"].isKLAP
-            ):  # no uncached entries for klap devices, so no need to check them
+            if not entry[
+                "controller"
+            ].isKLAP:  # no uncached entries for klap devices, so no need to check them
                 LOGGER.debug(
-                    f"Capability {check_function} not found, querying again..."
+                    "Capability %s not found, querying again...", check_function
                 )
                 result = await hass.async_add_executor_job(
                     getattr(entry["controller"], check_function)
                 )
-                LOGGER.debug(result)
-                LOGGER.debug(f"Creating {cls.__name__}")
+                LOGGER.debug("Capability result: %s", result)
+                LOGGER.debug("Creating %s", cls.__name__)
                 return True
     except Exception as err:
-        LOGGER.info(f"Camera does not support {cls.__name__}: {err}")
-        return False
-    return False
+        LOGGER.info("Camera does not support %s: %s", cls.__name__, err)
+        return None
+    return None
 
 
 async def check_and_create(entry, hass, cls, check_function, config_entry):
@@ -2295,6 +1414,6 @@ async def check_and_create(entry, hass, cls, check_function, config_entry):
         try:
             return cls(entry, hass, config_entry)
         except Exception as err:
-            LOGGER.info(f"Camera does not support {cls.__name__}: {err}")
+            LOGGER.info("Camera does not support %s: %s", cls.__name__, err)
             return None
     return None

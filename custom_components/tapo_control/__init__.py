@@ -369,7 +369,7 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             )
             camData = await getCamData(hass, tapoController)
             reported_ip_address = getIP(camData)
-            LOGGER.debug(f"Detected IP: {reported_ip_address}")
+            LOGGER.debug("Detected IP: %s", reported_ip_address)
             new[REPORTED_IP_ADDRESS] = reported_ip_address
 
             hass.config_entries.async_update_entry(
@@ -472,7 +472,9 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
 
         if desired_unique_id != config_entry.unique_id:
             LOGGER.debug(
-                f"Updating {config_entry.unique_id} to {desired_unique_id} as part of migration."
+                "Updating %s to %s as part of migration.",
+                config_entry.unique_id,
+                desired_unique_id,
             )
             hass.config_entries.async_update_entry(
                 config_entry,
@@ -482,7 +484,8 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             )
         else:
             LOGGER.debug(
-                f"Skipping {config_entry.unique_id} for unique_id update as part of migration."
+                "Skipping %s for unique_id update as part of migration.",
+                config_entry.unique_id,
             )
             hass.config_entries.async_update_entry(
                 config_entry,
@@ -534,7 +537,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    LOGGER.debug("async_remove_entry")
+    LOGGER.debug("Removing config entry")
     entry_id = entry.entry_id
     coldDirPath = getColdDirPathForEntry(hass, entry_id)
     hotDirPath = getHotDirPathForEntry(hass, entry_id)
@@ -544,24 +547,20 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
     # Delete all media stored in cold storage for entity
     if coldDirPath:
-        LOGGER.debug("Deleting cold storage files for entity " + entry_id + "...")
+        LOGGER.debug("Deleting cold storage files for entity %s...", entry_id)
         await deleteDir(hass, coldDirPath)
     else:
         LOGGER.warning(
-            "No cold storage path found for entity"
-            + entry_id
-            + ". Not deleting anything."
+            "No cold storage path found for entity %s. Not deleting anything.", entry_id
         )
 
     # Delete all media stored in hot storage for entity
     if hotDirPath:
-        LOGGER.debug("Deleting hot storage files for entity " + entry_id + "...")
+        LOGGER.debug("Deleting hot storage files for entity %s...", entry_id)
         await deleteDir(hass, hotDirPath)
     else:
         LOGGER.warning(
-            "No hot storage path found for entity"
-            + entry_id
-            + ". Not deleting anything."
+            "No hot storage path found for entity %s. Not deleting anything.", entry_id
         )
 
 
@@ -640,7 +639,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         LOGGER.debug("HA is not using HTTPS.")
 
     try:
-        LOGGER.debug(isKlapDevice)
+        LOGGER.debug("KLAP device: %s", isKlapDevice)
         tapoController = await _create_controller(
             hass, host, controlPort, username, password, cloud_password, isKlapDevice
         )
@@ -670,13 +669,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                     host,
                 )
             else:
-                LOGGER.error(
-                    f"Failed to sync time for {host}: {error}",
-                    exc_info=True,
-                )
+                LOGGER.exception("Failed to sync time for %s", host)
 
         async def async_update_data():
-            LOGGER.debug("async_update_data - entry")
+            LOGGER.debug("Starting data update cycle")
             tapoController = hass.data[DOMAIN][entry.entry_id]["controller"]
             host = entry.data.get(CONF_IP_ADDRESS)
             username = entry.data.get(CONF_USERNAME)
@@ -701,12 +697,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         or not hass.data[DOMAIN][entry.entry_id]["onvifManagement"]
                     ):
                         # retry if connection to onvif failed
-                        LOGGER.debug("Setting up subscription to motion sensor...")
+                        LOGGER.debug("Setting up motion sensor subscription")
                         onvifDevice = await initOnvifEvents(
                             hass, host, username, password
                         )
                         if onvifDevice:
-                            LOGGER.debug(onvifDevice)
+                            LOGGER.debug("ONVIF device: %s", onvifDevice)
                             hass.data[DOMAIN][entry.entry_id]["eventsDevice"] = (
                                 onvifDevice["device"]
                             )
@@ -735,7 +731,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         LOGGER.debug("Motion sensor: OK")
                 else:
                     LOGGER.debug(
-                        "Not updating motion sensor because device is child or parent."
+                        "Not updating motion sensor because device is child or parent"
                     )
 
                 if (
@@ -752,10 +748,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                             handleTimeSyncError(e)
                 ts = datetime.datetime.utcnow().timestamp()
             else:
-                debugMsg = "Both motion sensor and time sync are disabled."
                 if len(username) == 0 or len(password) == 0:
-                    debugMsg += " This is because RTSP username or password is empty."
-                LOGGER.debug(debugMsg)
+                    LOGGER.debug(
+                        "Both motion sensor and time sync are disabled because RTSP username or password is empty."
+                    )
+                else:
+                    LOGGER.debug("Both motion sensor and time sync are disabled.")
             if (
                 ts - hass.data[DOMAIN][entry.entry_id]["lastFirmwareCheck"]
                 > UPDATE_CHECK_PERIOD
@@ -769,7 +767,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         tapoController,
                     )
                 )
-                LOGGER.debug(hass.data[DOMAIN][entry.entry_id]["latestFirmwareVersion"])
+                LOGGER.debug(
+                    "Latest firmware version: %s",
+                    hass.data[DOMAIN][entry.entry_id]["latestFirmwareVersion"],
+                )
                 for childDevice in hass.data[DOMAIN][entry.entry_id]["childDevices"]:
                     childDevice["latestFirmwareVersion"] = (
                         await getLatestFirmwareVersion(
@@ -781,13 +782,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                     )
 
             # cameras state
-            LOGGER.debug("async_update_data - before someEntityEnabled check")
+            LOGGER.debug("Checking if any entities are enabled")
             someEntityEnabled = False
             allEntities = getAllEntities(hass.data[DOMAIN][entry.entry_id])
             for entity in allEntities:
-                LOGGER.debug(entity["entity"])
+                LOGGER.debug("Entity: %s", entity["entity"])
                 if entity["entity"]._enabled:
-                    LOGGER.debug("async_update_data - enabling someEntityEnabled check")
+                    LOGGER.debug("Found enabled entity")
                     someEntityEnabled = True
                     break
 
@@ -800,7 +801,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 for controller in hass.data[DOMAIN][entry.entry_id]["allControllers"]:
                     controllerData = getDataForController(hass, entry, controller)
                     LOGGER.debug(
-                        f"{controllerData['name']} running on battery: {controllerData['isRunningOnBattery']}"
+                        "%s running on battery: %s",
+                        controllerData["name"],
+                        controllerData["isRunningOnBattery"],
                     )
                     if (
                         not controllerData["isRunningOnBattery"]
@@ -810,10 +813,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         and ts - controllerData["lastUpdate"] > updateIntervalBattery
                     ):
                         timeForAnUpdate = True
-                        LOGGER.debug(f"Updating {controllerData['name']}...")
+                        LOGGER.debug("Updating %s...", controllerData["name"])
                     else:
                         timeForAnUpdate = False
-                        LOGGER.debug(f"Skipping update for {controllerData['name']}...")
+                        LOGGER.debug(
+                            "Skipping update for %s...", controllerData["name"]
+                        )
                     if timeForAnUpdate:
                         try:
                             updateDataForAllControllers[controller] = await getCamData(
@@ -837,7 +842,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                                 else:
                                     controllerData["refreshEnabled"] = False
                                     raise ConfigEntryAuthFailed(e)
-                            LOGGER.error(e)
+                            LOGGER.error(
+                                "Data update failed for %s: %s",
+                                controllerData["name"],
+                                e,
+                            )
 
                 if tapoController in updateDataForAllControllers:
                     hass.data[DOMAIN][entry.entry_id]["camData"] = (
@@ -856,7 +865,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                             in updateDataForAllControllers
                         ):
                             LOGGER.debug("Updating entity...")
-                            LOGGER.debug(entity["entity"])
+                            LOGGER.debug("Entity: %s", entity["entity"])
                             entity["camData"] = updateDataForAllControllers[
                                 entity["entry"]["controller"]
                             ]
@@ -891,16 +900,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 > MEDIA_CLEANUP_PERIOD
             ):
                 LOGGER.debug(
-                    "Initiating media cleanup for "
-                    + hass.data[DOMAIN][entry.entry_id]["name"]
-                    + "..."
+                    "Initiating media cleanup for %s...",
+                    hass.data[DOMAIN][entry.entry_id]["name"],
                 )
                 await mediaCleanup(hass, entry, hass.data[DOMAIN][entry.entry_id])
             if hass.data[DOMAIN][entry.entry_id]["isParent"]:
                 for child in hass.data[DOMAIN][entry.entry_id]["childDevices"]:
                     if ts - child["lastMediaCleanup"] > MEDIA_CLEANUP_PERIOD:
                         LOGGER.debug(
-                            "Initiating media cleanup for " + child["name"] + "..."
+                            "Initiating media cleanup for %s...", child["name"]
                         )
                         await mediaCleanup(hass, entry, child)
 
@@ -927,7 +935,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             chInfo = await hass.async_add_executor_job(tapoController.getAllChnInfo)
             chInfo = chInfo["system"]["chn_info"]
         except Exception as err:
-            LOGGER.debug(f"Failed to retrieve channels info: {err}")
+            LOGGER.debug("Failed to retrieve channels info: %s", err)
             chInfo = None
 
         camData = await getCamData(hass, tapoController, chInfo)
@@ -942,7 +950,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         currentTS = dt.as_timestamp(dt.now())
         timezoneOffset = cameraTS - currentTS
 
-        LOGGER.debug(f"Timezone offset is {timezoneOffset}.")
+        LOGGER.debug("Timezone offset is %s.", timezoneOffset)
 
         LOGGER.debug("Setting up entry data.")
         hass.data[DOMAIN][entry.entry_id] = {
@@ -1009,9 +1017,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         if not tapoController.isKLAP:
             LOGGER.debug("Controller is not KLAP device.")
-            if not (
-                not camData["childDevices"] or camData["childDevices"] is None
-            ):
+            if not (not camData["childDevices"] or camData["childDevices"] is None):
                 LOGGER.debug("Device is a parent.")
                 hass.data[DOMAIN][entry.entry_id]["isParent"] = True
                 if (
@@ -1044,7 +1050,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                             )
                             chInfo = chInfo["system"]["chn_info"]
                         except Exception as err:
-                            LOGGER.debug(f"Failed to retrieve channels info: {err}")
+                            LOGGER.debug("Failed to retrieve channels info: %s", err)
                             chInfo = None
 
                         childCamData = await getCamData(
@@ -1137,10 +1143,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 LOGGER.debug("Setting up motion sensor for the first time.")
                 await setupOnvif(hass, entry)
             else:
-                debugMsg = "Motion sensor is disabled."
                 if len(username) == 0 or len(password) == 0:
-                    debugMsg += " This is because RTSP username or password is empty."
-                LOGGER.debug(debugMsg)
+                    LOGGER.debug(
+                        "Motion sensor is disabled because RTSP username or password is empty."
+                    )
+                else:
+                    LOGGER.debug("Motion sensor is disabled.")
             if enableTimeSync:
                 try:
                     await syncTime(hass, entry.entry_id)
@@ -1154,7 +1162,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         # todo move to utils
         async def mediaSync(now, entry, device):
-            LOGGER.debug("mediaSync")
+            LOGGER.debug("Running media sync function")
             device["mediaSyncRanOnce"] = True
             enableMediaSync = device[ENABLE_MEDIA_SYNC]
             mediaSyncHours = entry.data.get(MEDIA_SYNC_HOURS)
@@ -1170,9 +1178,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 and entry.entry_id in hass.data[DOMAIN]
                 and "controller" in device
                 and not device["runningMediaSync"]
-                and not device["isDownloadingStream"]  # prevent breaking user manual upload
+                and not device[
+                    "isDownloadingStream"
+                ]  # prevent breaking user manual upload
             ):
-                LOGGER.debug("Running media sync for " + device["name"] + "...")
+                LOGGER.debug("Running media sync for %s...", device["name"])
                 device["runningMediaSync"] = True
                 try:
                     tapoController: Tapo = device["controller"]
@@ -1248,30 +1258,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                                                     LOGGER.debug("getRecording -2")
                                                 else:
                                                     LOGGER.debug(
-                                                        f"Media sync disabled (inside getRecording): {enableMediaSync}"
+                                                        "Media sync disabled (inside getRecording): %s",
+                                                        enableMediaSync,
                                                     )
                                             except Unresolvable as err:
                                                 if (
                                                     str(err)
                                                     == "Recording is currently in progress."
                                                 ):
-                                                    LOGGER.info(err)
+                                                    LOGGER.info(
+                                                        "Recording in progress: %s", err
+                                                    )
                                                 else:
-                                                    LOGGER.warning(err)
+                                                    LOGGER.warning(
+                                                        "Recording download failed: %s",
+                                                        err,
+                                                        exc_info=True,
+                                                    )
                                             except Exception as err:
                                                 device["runningMediaSync"] = False
-                                                LOGGER.error(err)
+                                                LOGGER.exception(
+                                                    "Recording download failed: %s", err
+                                                )
                             else:
                                 LOGGER.debug(
-                                    f"Media sync ignoring {searchResult[key]["date"]}. Media sync: {enableMediaSync}."
+                                    "Media sync ignoring %s. Media sync: %s.",
+                                    searchResult[key]["date"],
+                                    enableMediaSync,
                                 )
                 except Exception as err:
-                    LOGGER.error(err)
+                    LOGGER.exception("Media sync error: %s", err)
                 LOGGER.debug("runningMediaSync -false")
                 device["runningMediaSync"] = False
             else:
                 LOGGER.debug(
-                    f"Media sync for {device["name"]} disabled (inside mediaSync): {enableMediaSync}"
+                    "Media sync for %s disabled (inside mediaSync): %s",
+                    device["name"],
+                    enableMediaSync,
                 )
 
         async def unsubscribe(event):

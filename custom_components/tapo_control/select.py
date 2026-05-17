@@ -20,7 +20,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    LOGGER.debug("Setting up selects")
+    LOGGER.debug("Setting up select entities")
     entry = hass.data[DOMAIN][config_entry.entry_id]
 
     async def setupEntities(entry):
@@ -32,14 +32,14 @@ async def async_setup_entry(
                 for lens in entry["chInfo"]:
                     chn_alias = lens.get("chn_alias", "")
                     chn_id = lens.get("chn_id")
-                    LOGGER.debug(f"Adding {name} for {chn_alias}, id: {chn_id}...")
+                    LOGGER.debug("Adding %s for %s, id: %s...", name, chn_alias, chn_id)
                     selects.append(
                         cls(
                             entry, hass, config_entry, chn_alias, chn_id, **extra_kwargs
                         )
                     )
             else:
-                LOGGER.debug(f"Adding {name}...")
+                LOGGER.debug("Adding %s...", name)
                 selects.append(cls(entry, hass, config_entry, **extra_kwargs))
 
         def _add_night_vision(cls, entity_name, options, value_key, method):
@@ -61,10 +61,10 @@ async def async_setup_entry(
                         )
                     )
                     LOGGER.debug(
-                        f"Adding {entity_name} for {chn_alias}, id: {chn_id}..."
+                        "Adding %s for %s, id: %s...", entity_name, chn_alias, chn_id
                     )
             else:
-                LOGGER.debug(f"Adding {entity_name}...")
+                LOGGER.debug("Adding %s...", entity_name)
                 selects.append(
                     cls(
                         entry,
@@ -249,7 +249,9 @@ async def async_setup_entry(
                         ):
                             continue
                         LOGGER.debug(
-                            f"Adding TapoWhitelampForceTimeSelect for {chn_alias}, id: {chn_id}..."
+                            "Adding SpotlightForceTime for %s, id: %s...",
+                            chn_alias,
+                            chn_id,
                         )
                         selects.append(
                             TapoWhitelampForceTimeSelect(
@@ -741,7 +743,7 @@ class TapoNightVisionSelect(TapoSelectEntity):
                 self._attr_state = self._attr_current_option
 
     async def async_select_option(self, option: str) -> None:
-        LOGGER.debug("Calling " + self.method.__name__ + " with " + option + "...")
+        LOGGER.debug("Calling %s with %s...", self.method.__name__, option)
         result = await self._hass.async_add_executor_job(
             self.method,
             getNightModeValue(option),
@@ -821,7 +823,7 @@ class TapoAutomaticAlarmModeSelect(TapoSelectEntity):
         alarm_on = option != "off"
         sound_on = option in ("both", "sound", "off")
         light_on = option in ("both", "light", "off")
-        LOGGER.debug(f"setAlarm({alarm_on}, {sound_on}, {light_on})")
+        LOGGER.debug("setAlarm(%s, %s, %s)", alarm_on, sound_on, light_on)
         result = await self.hass.async_add_executor_job(
             self._controller.setAlarm,
             alarm_on,
@@ -844,19 +846,19 @@ class TapoDualCamLinkage(TapoSelectEntity):
         )
 
     def updateTapo(self, camData):
-        LOGGER.debug(f"TapoDualCamLinkage updateTapo 1")
+        LOGGER.debug("DualCamLinkage step %d", 1)
         if not camData:
-            LOGGER.debug("TapoDualCamLinkage updateTapo 2")
+            LOGGER.debug("DualCamLinkage step %d", 2)
             self._attr_state = STATE_UNAVAILABLE
             return
-        LOGGER.debug(f"Enabled: {camData["dualCamLinkageEnabled"]}")
-        LOGGER.debug(f"Type: {camData["dualCamLinkageType"]}")
-        LOGGER.debug("TapoDualCamLinkage updateTapo 3")
+        LOGGER.debug("Enabled: %s", camData["dualCamLinkageEnabled"])
+        LOGGER.debug("Type: %s", camData["dualCamLinkageType"])
+        LOGGER.debug("DualCamLinkage step %d", 3)
         if camData["dualCamLinkageEnabled"] == "off":
-            LOGGER.debug("TapoDualCamLinkage updateTapo 4")
+            LOGGER.debug("DualCamLinkage step %d", 4)
             self._attr_current_option = "off"
         else:
-            LOGGER.debug("TapoDualCamLinkage updateTapo 5")
+            LOGGER.debug("DualCamLinkage step %d", 5)
             linkage_type = str(camData.get("dualCamLinkageType"))
             self._attr_current_option = next(
                 (
@@ -866,9 +868,9 @@ class TapoDualCamLinkage(TapoSelectEntity):
                 ),
                 "off",
             )
-        LOGGER.debug("TapoDualCamLinkage updateTapo 6")
+        LOGGER.debug("DualCamLinkage step %d", 6)
         self._attr_state = self._attr_current_option
-        LOGGER.debug("Updating TapoDualCamLinkage to: " + str(self._attr_state))
+        LOGGER.debug("Updating DualCamLinkage to: %s", self._attr_state)
 
     async def async_select_option(self, option: str) -> None:
         result = await self.hass.async_add_executor_job(
@@ -1064,7 +1066,7 @@ class TapoMoveToPresetSelect(TapoSelectEntity):
             await self.hass.async_add_executor_job(self._controller.setPreset, foundKey)
             self._attr_current_option = None
         else:
-            LOGGER.error(f"Preset {option} does not exist.")
+            LOGGER.error("Preset %s does not exist.", option)
 
     @property
     def entity_category(self):
@@ -1095,7 +1097,7 @@ class TapoSirenTypeSelect(TapoSelectEntity):
                 self._attr_state = STATE_UNAVAILABLE
 
             self._attr_state = self._attr_current_option
-        LOGGER.debug("Updating TapoHubSirenTypeSelect to: " + str(self._attr_state))
+        LOGGER.debug("Updating SirenType to: %s", self._attr_state)
 
     async def async_select_option(self, option: str) -> None:
         if self.hub:
@@ -1167,7 +1169,7 @@ class TapoAlertTypeSelect(TapoSelectEntity):
                 self._attr_current_option = self.user_sounds[currentSirenType]
 
             self._attr_state = self._attr_current_option
-        LOGGER.debug("Updating TapoHubSirenTypeSelect to: " + str(self._attr_state))
+        LOGGER.debug("Updating AlertType to: %s", self._attr_state)
 
     async def async_select_option(self, option: str) -> None:
         optionIndex = None

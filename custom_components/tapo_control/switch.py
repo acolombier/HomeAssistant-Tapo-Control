@@ -20,7 +20,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    LOGGER.debug("Setting up switches")
+    LOGGER.debug("Setting up switch entities")
     entry: dict = hass.data[DOMAIN][config_entry.entry_id]
 
     switches = []
@@ -86,7 +86,9 @@ async def async_setup_entry(
                     ):
                         continue
                     LOGGER.debug(
-                        f"Adding tapoLensDistortionCorrectionSwitch for {chn_alias}, id: {chn_id}..."
+                        "Adding LensDistortionCorrection for %s, id: %s...",
+                        chn_alias,
+                        chn_id,
                     )
                     switches.append(
                         TapoLensDistortionCorrectionSwitch(
@@ -131,7 +133,7 @@ async def async_setup_entry(
                 tapoSmartTrackType = TapoSmartTrackSwitch(
                     entry, hass, config_entry, smartTrackType
                 )
-                LOGGER.debug("Adding tapoCoverSwitch " + smartTrackType + "...")
+                LOGGER.debug("Adding cover switch %s...", smartTrackType)
                 switches.append(tapoSmartTrackType)
 
         if (
@@ -159,7 +161,7 @@ async def async_setup_entry(
                     ):
                         continue
                     LOGGER.debug(
-                        f"Adding tapoFlipSwitch for {chn_alias}, id: {chn_id}..."
+                        "Adding FlipSwitch for %s, id: %s...", chn_alias, chn_id
                     )
                     switches.append(
                         TapoFlipSwitch(entry, hass, config_entry, chn_alias, chn_id)
@@ -297,11 +299,15 @@ async def async_setup_entry(
                         )
                     else:
                         LOGGER.debug(
-                            f"Skipping adding switch for {support_type}, value is {entry["camData"]["dualLinkageCapability"][key]}."
+                            "Skipping switch %s, value is %s",
+                            support_type,
+                            entry["camData"]["dualLinkageCapability"][key],
                         )
                 else:
                     LOGGER.warning(
-                        f"Unexpected key {key} for dualLinkageCapability: {entry["camData"]["dualLinkageCapability"]}"
+                        "Unexpected key %s for dualLinkageCapability: %s",
+                        key,
+                        entry["camData"]["dualLinkageCapability"],
                     )
 
         return switches
@@ -706,7 +712,7 @@ class TapoPrivacySwitch(TapoSwitchEntity):
         else:
             self._attr_is_on = camData["privacy_mode"] == "on"
             self._attr_state = "on" if self._attr_is_on else "off"
-        LOGGER.debug("Updating TapoPrivacySwitch to: " + str(self._attr_state))
+        LOGGER.debug("Updating PrivacySwitch to: %s", self._attr_state)
 
     @property
     def icon(self) -> str:

@@ -154,8 +154,8 @@ class TapoUdpMonitor:
             )
         except OSError as err:
             LOGGER.warning(
-                "TapoUdpMonitor could not bind UDP port %s (already in use?): %s. "
-                "UDP doorbell pulses will be disabled.",
+                "Could not bind UDP port %s (already in use?): %s. "
+                "Doorbell pulses disabled.",
                 DOORBELL_UDP_PORT,
                 err,
             )
@@ -169,7 +169,7 @@ class TapoUdpMonitor:
         if self._transport is not None:
             self._transport.close()
             self._transport = None
-            LOGGER.debug("TapoUdpMonitor stopped")
+            LOGGER.debug("UDP monitor stopped")
 
 
 class _TapoUdpProtocol(asyncio.DatagramProtocol):
@@ -248,7 +248,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class TapoNoiseBinarySensor(TapoBinarySensorEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoNoiseBinarySensor - init - start")
+        LOGGER.debug("Initializing noise sensor")
         TapoBinarySensorEntity.__init__(
             self,
             "Noise",
@@ -282,20 +282,21 @@ class TapoNoiseBinarySensor(TapoBinarySensorEntity):
 
         self._attr_state = STATE_UNAVAILABLE
 
-        LOGGER.debug("TapoNoiseBinarySensor - init - end")
+        LOGGER.debug("Noise sensor initialized")
 
     async def startNoiseDetection(self):
-        LOGGER.debug("startNoiseDetection")
+        LOGGER.debug("Starting noise detection")
         self._hass.data[DOMAIN][self._config_entry.entry_id][
             "noiseSensorStarted"
         ] = True
-        LOGGER.debug(getStreamSource(self._config_entry, "stream2"))
         LOGGER.debug(
-            str(self._sound_detection_duration)
-            + ","
-            + str(self._sound_detection_reset)
-            + ","
-            + str(self._sound_detection_peak),
+            "Stream source: %s", getStreamSource(self._config_entry, "stream2")
+        )
+        LOGGER.debug(
+            "Sound detection params: %s, %s, %s",
+            self._sound_detection_duration,
+            self._sound_detection_reset,
+            self._sound_detection_peak,
         )
         await self._noiseSensor.open_sensor(
             input_source=getStreamSource(self._config_entry, "stream2"),
@@ -304,8 +305,8 @@ class TapoNoiseBinarySensor(TapoBinarySensorEntity):
 
     @callback
     def _noiseCallback(self, noiseDetected):
-        LOGGER.debug("_noiseCallback")
-        LOGGER.debug(noiseDetected)
+        LOGGER.debug("Noise detection callback")
+        LOGGER.debug("Noise detected: %s", noiseDetected)
         if not self.latestCamData or self.latestCamData["privacy_mode"] == "on":
             self._attr_state = STATE_UNAVAILABLE
         else:
@@ -320,7 +321,7 @@ class TapoNoiseBinarySensor(TapoBinarySensorEntity):
 
 class EventsListener:
     def __init__(self, async_add_entities, hass, config_entry):
-        LOGGER.debug("EventsListener init")
+        LOGGER.debug("Initializing events listener")
         self.metaData = hass.data[DOMAIN][config_entry.entry_id]
         self.async_add_entities = async_add_entities
 
@@ -339,16 +340,16 @@ class EventsListener:
 
         @callback
         def async_check_entities():
-            LOGGER.debug("async_check_entities")
+            LOGGER.debug("Checking entities")
             nonlocal uids_by_platform
             if not (missing := uids_by_platform.difference(entities)):
                 return
             new_entities: dict[str, TapoMotionSensor] = {
                 uid: TapoMotionSensor(uid, events, name, camData) for uid in missing
             }
-            LOGGER.debug("async_check_entities2")
+            LOGGER.debug("Checking entities (step 2)")
             if new_entities:
-                LOGGER.debug("async_check_entities3")
+                LOGGER.debug("Checking entities (step 3)")
                 entities.update(new_entities)
                 self.async_add_entities(new_entities.values())
 
@@ -357,7 +358,7 @@ class EventsListener:
 
 class TapoMotionSensor(BinarySensorEntity):
     def __init__(self, uid, events, name, camData):
-        LOGGER.debug("TapoMotionSensor - init - start")
+        LOGGER.debug("Initializing motion sensor")
         self._attr_unique_id = uid
         self._name = name
         self._attributes = camData["basic_info"]
@@ -376,7 +377,7 @@ class TapoMotionSensor(BinarySensorEntity):
         self._attr_device_class = event.device_class
         self._attr_enabled = event.entity_enabled
         BinarySensorEntity.__init__(self)
-        LOGGER.debug("TapoMotionSensor - init - end")
+        LOGGER.debug("Motion sensor initialized")
 
     @property
     def _event(self):

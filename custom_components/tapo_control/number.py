@@ -39,7 +39,9 @@ async def async_setup_entry(
                     chn_alias = lens.get("chn_alias", "")
                     chn_id = lens.get("chn_id")
                     LOGGER.debug(
-                        f"Adding tapoMotionDetectionDigitalSensitivity for {chn_alias}, id: {chn_id}..."
+                        "Adding MotionDetectionDigitalSensitivity for %s, id: %s...",
+                        chn_alias,
+                        chn_id,
                     )
                     numbers.append(
                         TapoMotionDetectionDigitalSensitivity(
@@ -120,7 +122,9 @@ async def async_setup_entry(
                     )
                     if tapoSpotlightIntensity:
                         LOGGER.debug(
-                            f"Adding tapoSpotlightIntensity for {chn_alias}, id: {chn_id}..."
+                            "Adding SpotlightIntensity for %s, id: %s...",
+                            chn_alias,
+                            chn_id,
                         )
                         numbers.append(tapoSpotlightIntensity)
             else:
@@ -176,7 +180,7 @@ async def async_setup_entry(
 
 class TapoChimeVolumePlay(RestoreNumber, TapoEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoChimeVolumePlay - init - start")
+        LOGGER.debug("Initializing chime play volume")
         self._attr_native_min_value = 1
         self._attr_native_max_value = 15
         self._attr_native_step = 1
@@ -193,7 +197,7 @@ class TapoChimeVolumePlay(RestoreNumber, TapoEntity):
             "mdi:volume-high",
         )
         RestoreNumber.__init__(self)
-        LOGGER.debug("TapoChimeVolumePlay - init - end")
+        LOGGER.debug("Initialized chime play volume")
 
     @property
     def entity_category(self):
@@ -213,7 +217,7 @@ class TapoChimeVolumePlay(RestoreNumber, TapoEntity):
 
 class TapoChimeDurationPlay(RestoreNumber, TapoEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoChimeDurationPlay - init - start")
+        LOGGER.debug("Initializing chime play duration")
         self._attr_native_min_value = 0
         self._attr_native_max_value = 30
         self._attr_native_step = 1
@@ -230,7 +234,7 @@ class TapoChimeDurationPlay(RestoreNumber, TapoEntity):
             "mdi:dots-horizontal-circle",
         )
         RestoreNumber.__init__(self)
-        LOGGER.debug("TapoChimeDurationPlay - init - end")
+        LOGGER.debug("Initialized chime play duration")
 
     @property
     def entity_category(self):
@@ -250,7 +254,7 @@ class TapoChimeDurationPlay(RestoreNumber, TapoEntity):
 
 class TapoMovementAngle(RestoreNumber, TapoEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoMovementAngle - init - start")
+        LOGGER.debug("Initializing movement angle")
         self._attr_native_min_value = 5
         self._attr_native_max_value = 120
         self._attr_native_step = 5
@@ -260,7 +264,7 @@ class TapoMovementAngle(RestoreNumber, TapoEntity):
 
         TapoEntity.__init__(self, entry, "Movement Angle")
         RestoreNumber.__init__(self)
-        LOGGER.debug("TapoMovementAngle - init - end")
+        LOGGER.debug("Initialized movement angle")
 
     @property
     def entity_category(self):
@@ -287,7 +291,7 @@ class TapoMotionDetectionDigitalSensitivity(TapoNumberEntity):
         specific_name=None,
         chn_id=None,
     ):
-        LOGGER.debug("TapoMotionDetectionDigitalSensitivity - init - start")
+        LOGGER.debug("Initializing motion sensitivity")
         self._attr_min_value = 1
         self._attr_max_value = 100
         self._attr_native_min_value = 1
@@ -332,7 +336,7 @@ class TapoChimeDuration(TapoNumberEntity):
         config_entry,
         macAddress: str,
     ):
-        LOGGER.debug("TapoChimeDuration - init - start")
+        LOGGER.debug("Initializing chime duration")
         self._attr_min_value = 0
         self._attr_max_value = 30
         self._attr_native_min_value = 0
@@ -383,7 +387,7 @@ class TapoChimeVolume(TapoNumberEntity):
         config_entry,
         macAddress: str,
     ):
-        LOGGER.debug("TapoChimeVolume - init - start")
+        LOGGER.debug("Initializing chime volume")
         self._attr_min_value = 1
         self._attr_max_value = 15
         self._attr_native_min_value = 1
@@ -425,7 +429,7 @@ class TapoChimeVolume(TapoNumberEntity):
 
 class TapoMicrophoneVolume(TapoNumberEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoMicrophoneVolume - init - start")
+        LOGGER.debug("Initializing microphone volume")
         self._attr_min_value = 0
         self._attr_max_value = 100
         self._attr_native_min_value = 0
@@ -455,7 +459,7 @@ class TapoMicrophoneVolume(TapoNumberEntity):
 
 class TapoSpeakerVolume(TapoNumberEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoSpeakerVolume - init - start")
+        LOGGER.debug("Initializing speaker volume")
         self._attr_min_value = 0
         self._attr_max_value = 100
         self._attr_native_min_value = 0
@@ -485,7 +489,7 @@ class TapoSpeakerVolume(TapoNumberEntity):
 
 class TapoSirenVolume(TapoNumberEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoSirenVolume - init - start")
+        LOGGER.debug("Initializing siren volume")
         self._attr_min_value = 1
         self._attr_max_value = 10
         self._attr_native_min_value = 1
@@ -509,7 +513,7 @@ class TapoSirenVolume(TapoNumberEntity):
             config_entry,
             "mdi:volume-high",
         )
-        LOGGER.debug("TapoSirenVolume - init - end")
+        LOGGER.debug("Initialized siren volume")
 
     @property
     def entity_category(self):
@@ -541,7 +545,7 @@ class TapoSirenVolume(TapoNumberEntity):
                     {"msg_alarm": {self.value_key: strval}},
                 )
             else:
-                LOGGER.error("Unexpected type of alarm: " + self.typeOfAlarm)
+                LOGGER.error("Unexpected alarm type: %s", self.typeOfAlarm)
         if "error_code" not in result or result["error_code"] == 0:
             self._attr_state = value
         self.async_write_ha_state()
@@ -569,7 +573,7 @@ class TapoFloodlightBrightness(TapoNumberEntity):
     def __init__(
         self, entry: dict, hass: HomeAssistant, config_entry, minValue, maxValue
     ):
-        LOGGER.debug("TapoFloodlightBrightness - init - start")
+        LOGGER.debug("Initializing floodlight brightness")
         self._attr_min_value = int(minValue)
         self._attr_native_min_value = int(minValue)
         self._attr_max_value = int(maxValue)
@@ -589,7 +593,7 @@ class TapoFloodlightBrightness(TapoNumberEntity):
             config_entry,
             "mdi:lightbulb-on-50",
         )
-        LOGGER.debug("TapoFloodlightBrightness - init - end")
+        LOGGER.debug("Initialized floodlight brightness")
 
     async def async_set_native_value(self, value: float) -> None:
         await self._async_set_number(
@@ -615,7 +619,7 @@ class TapoSpotlightIntensity(TapoNumberEntity):
         specific_name=None,
         chn_id=None,
     ):
-        LOGGER.debug("TapoSpotlightIntensity - init - start")
+        LOGGER.debug("Initializing spotlight intensity")
         self._attr_min_value = 1
         self._attr_native_min_value = 1
         self.chn_id = chn_id
@@ -637,16 +641,11 @@ class TapoSpotlightIntensity(TapoNumberEntity):
 
         if ldc_style:
             if ldc_style == "standard":
-                LOGGER.debug(
-                    "Determining maximum range for TapoSpotlightIntensity: standard"
-                )
+                LOGGER.debug("Max range for SpotlightIntensity: standard")
                 self._attr_max_value = 5
                 self._attr_native_max_value = 5
             else:
-                LOGGER.debug(
-                    "Determining maximum range for TapoSpotlightIntensity: "
-                    + str(ldc_style)
-                )
+                LOGGER.debug("Max range for SpotlightIntensity: %s", ldc_style)
                 if smartwtl_level is not None:
                     self._attr_max_value = int(smartwtl_level)
                     self._attr_native_max_value = int(smartwtl_level)
@@ -655,7 +654,7 @@ class TapoSpotlightIntensity(TapoNumberEntity):
                     self._attr_native_max_value = 100
         else:
             LOGGER.debug(
-                "Determining maximum range for TapoSpotlightIntensity: Default to 100 because of missing style."
+                "Max range for SpotlightIntensity: default to 100, missing style"
             )
             self._attr_max_value = 100
             self._attr_native_max_value = 100
@@ -675,7 +674,7 @@ class TapoSpotlightIntensity(TapoNumberEntity):
             config_entry,
             "mdi:lightbulb-on-50",
         )
-        LOGGER.debug("TapoSpotlightIntensity - init - end")
+        LOGGER.debug("Initialized spotlight intensity")
 
     async def async_set_native_value(self, value: float) -> None:
         await self._async_set_number(
@@ -699,7 +698,7 @@ class TapoSpotlightIntensity(TapoNumberEntity):
 
 class TapoSirenDuration(TapoNumberEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoSirenDuration - init - start")
+        LOGGER.debug("Initializing siren duration")
         self._attr_min_value = 1
         self._attr_native_min_value = 1
         self._attr_max_value = 300
@@ -726,7 +725,7 @@ class TapoSirenDuration(TapoNumberEntity):
             config_entry,
             "mdi:clock-end",
         )
-        LOGGER.debug("TapoSirenDuration - init - end")
+        LOGGER.debug("Initialized siren duration")
 
     @property
     def entity_category(self):

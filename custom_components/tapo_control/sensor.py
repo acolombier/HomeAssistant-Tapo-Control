@@ -24,7 +24,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Setup Tapo camera sensors using config entry."""
-    LOGGER.debug("Setting up sensors")
+    LOGGER.debug("Setting up sensor entities")
     entry = hass.data[DOMAIN][config_entry.entry_id]
 
     async def setupEntities(entry: dict) -> list:
@@ -359,4 +359,3 @@ class TapoSyncSensor(TapoSensorEntity):
             self._attr_native_value = "No Recordings Found"
         elif data["downloadProgress"] != "Finished download":
             self._attr_native_value = data["downloadProgress"]
-        

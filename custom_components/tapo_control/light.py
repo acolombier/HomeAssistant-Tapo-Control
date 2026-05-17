@@ -43,7 +43,7 @@ async def async_setup_entry(
                     )
                     if tapoFloodlight:
                         LOGGER.debug(
-                            f"Adding tapoFloodlight for {chn_alias}, id: {chn_id}..."
+                            "Adding floodlight for %s, id: %s...", chn_alias, chn_id
                         )
                         lights.append(tapoFloodlight)
             else:
@@ -93,7 +93,7 @@ async def async_setup_entry(
 
 class TapoWhitelight(TapoLightEntity):
     def __init__(self, entry: dict, hass: HomeAssistant, config_entry):
-        LOGGER.debug("TapoWhitelight - init - start")
+        LOGGER.debug("Initializing whitelight")
         self._attr_is_on = False
         self._attr_color_mode = ColorMode.ONOFF
         self._attr_supported_color_modes = set([ColorMode.ONOFF])
@@ -107,7 +107,7 @@ class TapoWhitelight(TapoLightEntity):
             config_entry,
             "mdi:light-flood-down",
         )
-        LOGGER.debug("TapoWhitelight - init - end")
+        LOGGER.debug("Initialized whitelight")
 
     async def _async_set_whitelamp(self, target_on):
         target_state = "on" if target_on else "off"
@@ -122,7 +122,7 @@ class TapoWhitelight(TapoLightEntity):
             result = await self._hass.async_add_executor_job(
                 self._controller.reverseWhitelampStatus
             )
-            LOGGER.debug(result)
+            LOGGER.debug("API result: %s", result)
             if "error_code" not in result or result["error_code"] == 0:
                 LOGGER.debug("Setting light state to: %s", target_state)
                 self._attr_is_on = target_on
@@ -156,7 +156,7 @@ class TapoFloodlightModern(TapoLightEntity):
         minValue: int,
         maxValue: int,
     ):
-        LOGGER.debug("TapoFloodlightModern - init - start")
+        LOGGER.debug("Initializing floodlight modern")
         self._attr_is_on = str(entry["camData"]["flood_light_status"]) == "1"
         self.is_on = self._attr_is_on
         self._attr_color_mode = ColorMode.BRIGHTNESS
@@ -176,7 +176,7 @@ class TapoFloodlightModern(TapoLightEntity):
             config_entry,
             "mdi:light-flood-down",
         )
-        LOGGER.debug("TapoFloodlight - init - end")
+        LOGGER.debug("Initialized floodlight modern")
 
     def scaleBrightnessValue(self, value):
         if not (1 <= value <= 255):
@@ -190,7 +190,7 @@ class TapoFloodlightModern(TapoLightEntity):
         if ATTR_BRIGHTNESS in kwargs:
             brightnessValue = self.scaleBrightnessValue(kwargs[ATTR_BRIGHTNESS])
             if brightnessValue != self._brightness:
-                LOGGER.debug(f"Changing brightness to {brightnessValue}...")
+                LOGGER.debug("Changing brightness to %s...", brightnessValue)
                 result = await self._hass.async_add_executor_job(
                     self._controller.setFloodlightConfig,
                     None,
@@ -206,7 +206,7 @@ class TapoFloodlightModern(TapoLightEntity):
                 self._controller.manualFloodlightOp,
                 True,
             )
-            LOGGER.debug(result)
+            LOGGER.debug("API result: %s", result)
             if "error_code" not in result or result["error_code"] == 0:
                 LOGGER.debug("Setting light state to: on")
                 self._attr_state = "on"
@@ -221,7 +221,7 @@ class TapoFloodlightModern(TapoLightEntity):
                 self._controller.manualFloodlightOp,
                 False,
             )
-            LOGGER.debug(result)
+            LOGGER.debug("API result: %s", result)
             if "error_code" not in result or result["error_code"] == 0:
                 LOGGER.debug("Setting light state to: off")
                 self._attr_state = "off"
@@ -256,7 +256,7 @@ class TapoFloodlight(TapoLightEntity):
         specific_name=None,
         chn_id=None,
     ):
-        LOGGER.debug("TapoFloodlight - init - start")
+        LOGGER.debug("Initializing floodlight")
         self._attr_is_on = False
         self._attr_color_mode = ColorMode.ONOFF
         self._attr_supported_color_modes = set([ColorMode.ONOFF])
@@ -272,7 +272,7 @@ class TapoFloodlight(TapoLightEntity):
             config_entry,
             "mdi:light-flood-down",
         )
-        LOGGER.debug("TapoFloodlight - init - end")
+        LOGGER.debug("Initialized floodlight")
 
     async def _async_set_floodlight(self, target_on):
         target_state = "on" if target_on else "off"
@@ -282,7 +282,7 @@ class TapoFloodlight(TapoLightEntity):
             target_on,
             [self.chn_id] if self.chn_id else None,
         )
-        LOGGER.debug(result)
+        LOGGER.debug("API result: %s", result)
         if "error_code" not in result or result["error_code"] == 0:
             LOGGER.debug("Setting light state to: %s", target_state)
             self._attr_state = target_state

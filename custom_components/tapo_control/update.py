@@ -59,14 +59,14 @@ class TapoCamUpdate(UpdateEntity):
     def updateTapo(self, camData):
         # prevent instantinous internal refresh with old data triggering update
         # on this entity and cancelling in progress update
-        LOGGER.debug("updateTapo in update entity")
+        LOGGER.debug("Updating firmware entity data")
         if camData and camData["updated"] > self._lastDataUpdate:
-            LOGGER.debug(f"Processing new data (updated at {camData['updated']})...")
+            LOGGER.debug("Processing new data from %s", camData["updated"])
             self._lastDataUpdate = camData["updated"]
             self._attributes = camData["basic_info"]
             if self._in_progress:
-                LOGGER.debug("Status of firmware status:")
-                LOGGER.debug(camData["firmwareUpdateStatus"])
+                LOGGER.debug("Firmware update status:")
+                LOGGER.debug("Firmware status: %s", camData["firmwareUpdateStatus"])
                 ts = datetime.datetime.utcnow().timestamp()
                 if (
                     ts > self._installRequestedTime + 60
@@ -133,12 +133,12 @@ class TapoCamUpdate(UpdateEntity):
             self._entry["latestFirmwareVersion"]
             and "version" in self._entry["latestFirmwareVersion"]
         ):
-            LOGGER.debug("Latest version - coming from cloud")
-            LOGGER.debug(self._entry["latestFirmwareVersion"])
+            LOGGER.debug("Latest version from cloud")
+            LOGGER.debug("Latest firmware: %s", self._entry["latestFirmwareVersion"])
             return self._entry["latestFirmwareVersion"]["version"]
         else:
-            LOGGER.debug("Latest version - no cloud update")
-            LOGGER.debug(self._attributes["sw_version"])
+            LOGGER.debug("No cloud update available")
+            LOGGER.debug("Current version: %s", self._attributes["sw_version"])
             return self._attributes["sw_version"]
 
     @property
@@ -147,7 +147,7 @@ class TapoCamUpdate(UpdateEntity):
             self._entry["latestFirmwareVersion"]
             and "release_log" in self._entry["latestFirmwareVersion"]
         ):
-            LOGGER.debug("Release_summary - coming from cloud")
+            LOGGER.debug("Release summary from cloud")
             maxLength = 255
             releaseLog = self._entry["latestFirmwareVersion"]["release_log"].replace(
                 "\\n", "\n"
@@ -158,7 +158,7 @@ class TapoCamUpdate(UpdateEntity):
                 else releaseLog
             )
         else:
-            LOGGER.debug("Release_summary - none")
+            LOGGER.debug("No release summary available")
             return None
 
     async def async_install(
@@ -166,15 +166,15 @@ class TapoCamUpdate(UpdateEntity):
         version,
         backup,
     ):
-        LOGGER.debug("Install new firmware has been triggerred")
-        LOGGER.debug(version)
-        LOGGER.debug(backup)
+        LOGGER.debug("Firmware install triggered")
+        LOGGER.debug("Version: %s", version)
+        LOGGER.debug("Backup: %s", backup)
         try:
             await self.hass.async_add_executor_job(
                 self._controller.startFirmwareUpgrade
             )
             self._installRequestedTime = datetime.datetime.utcnow().timestamp()
             self._in_progress = True
-            LOGGER.debug("Install is now in progress...")
+            LOGGER.debug("Firmware install in progress...")
         except Exception as e:
-            LOGGER.error(e)
+            LOGGER.exception("Firmware install failed: %s", e)

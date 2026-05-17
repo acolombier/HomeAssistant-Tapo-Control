@@ -78,7 +78,15 @@ ENABLE_TIME_SYNC = "enable_time_sync"
 HAS_STREAM_6 = "has_stream6"
 HAS_STREAM_7 = "has_stream7"
 
+
+class _ContextFilter(logging.Filter):
+    def filter(self, record):
+        record.msg = f"[{record.module}:{record.funcName}:{record.lineno}] {record.msg}"
+        return True
+
+
 LOGGER = logging.getLogger("custom_components." + DOMAIN)
+LOGGER.addFilter(_ContextFilter())
 
 TIME_SYNC_PERIOD = 3600
 RECORDINGS_UNAVAILABLE_MESSAGE = (

@@ -77,7 +77,7 @@ class TapoUpdateEntity(UpdateEntity, TapoEntity):
         icon=None,
         device_class=None,
     ):
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing entity: %s", name_suffix)
         self._attr_is_on = False
         self._hass = hass
         self._attr_icon = icon
@@ -90,7 +90,7 @@ class TapoUpdateEntity(UpdateEntity, TapoEntity):
 
         self.updateTapo(entry["camData"])
 
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Entity initialized: %s", name_suffix)
 
     @property
     def entity_category(self):
@@ -112,7 +112,7 @@ class TapoSwitchEntity(SwitchEntity, TapoEntity):
         device_class=None,
         on_method_name=None,
     ):
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing entity: %s", name_suffix)
         self._attr_is_on = False
         self._hass = hass
         self._attr_icon = icon
@@ -124,7 +124,7 @@ class TapoSwitchEntity(SwitchEntity, TapoEntity):
 
         TapoEntity.__init__(self, entry, name_suffix)
         SwitchEntity.__init__(self)
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Entity initialized: %s", name_suffix)
 
     async def _async_set_switch(self, method, *args):
         value = next((a for a in reversed(args) if isinstance(a, bool)), True)
@@ -163,7 +163,7 @@ class TapoSensorEntity(SensorEntity, TapoEntity):
         icon=None,
         device_class=None,
     ):
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing entity: %s", name_suffix)
         self._attr_is_on = False
         self._hass = hass
         self._attr_icon = icon
@@ -174,7 +174,7 @@ class TapoSensorEntity(SensorEntity, TapoEntity):
         TapoEntity.__init__(self, entry, name_suffix)
         SensorEntity.__init__(self)
         self.updateTapo(entry["camData"])
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Entity initialized: %s", name_suffix)
 
     @property
     def available(self) -> bool:
@@ -191,7 +191,7 @@ class TapoButtonEntity(ButtonEntity, TapoEntity):
         icon=None,
         device_class=None,
     ):
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing entity: %s", name_suffix)
         self._hass = hass
         self._attr_icon = icon
         self._attr_device_class = device_class
@@ -200,7 +200,7 @@ class TapoButtonEntity(ButtonEntity, TapoEntity):
 
         TapoEntity.__init__(self, entry, name_suffix)
         ButtonEntity.__init__(self)
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Entity initialized: %s", name_suffix)
 
     @property
     def state(self):
@@ -217,7 +217,7 @@ class TapoBinarySensorEntity(BinarySensorEntity, TapoEntity):
         icon=None,
         device_class=None,
     ):
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing entity: %s", name_suffix)
         self._attr_is_on = False
         self._hass = hass
         self._attr_icon = icon
@@ -227,7 +227,7 @@ class TapoBinarySensorEntity(BinarySensorEntity, TapoEntity):
 
         TapoEntity.__init__(self, entry, name_suffix)
         BinarySensorEntity.__init__(self)
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Entity initialized: %s", name_suffix)
 
     @property
     def state(self):
@@ -244,20 +244,20 @@ class TapoLightEntity(LightEntity, TapoEntity):
         icon=None,
         device_class=None,
     ):
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing entity: %s", name_suffix)
         self._hass = hass
         self._attr_icon = icon
         self._attr_device_class = device_class
-        LOGGER.debug(f"Tapo {name_suffix} - init - append")
+        LOGGER.debug("Appending entity: %s", name_suffix)
         entry["entities"].append({"entity": self, "entry": entry})
-        LOGGER.debug(f"Tapo {name_suffix} - init - update")
+        LOGGER.debug("Updating entity: %s", name_suffix)
         self.updateTapo(entry["camData"])
 
-        LOGGER.debug(f"Tapo {name_suffix} - init - TapoEntity")
+        LOGGER.debug("Initializing TapoEntity: %s", name_suffix)
         TapoEntity.__init__(self, entry, name_suffix)
-        LOGGER.debug(f"Tapo {name_suffix} - init - SelectEntity")
+        LOGGER.debug("Initializing SelectEntity: %s", name_suffix)
         LightEntity.__init__(self)
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Entity initialized: %s", name_suffix)
 
 
 class TapoSelectEntity(SelectEntity, TapoEntity):
@@ -270,20 +270,20 @@ class TapoSelectEntity(SelectEntity, TapoEntity):
         icon=None,
         device_class=None,
     ):
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing entity: %s", name_suffix)
         self._hass = hass
         self._attr_icon = icon
         self._attr_device_class = device_class
-        LOGGER.debug(f"Tapo {name_suffix} - init - append")
+        LOGGER.debug("Appending entity: %s", name_suffix)
         entry["entities"].append({"entity": self, "entry": entry})
-        LOGGER.debug(f"Tapo {name_suffix} - init - update")
+        LOGGER.debug("Updating entity: %s", name_suffix)
         self.updateTapo(entry["camData"])
 
-        LOGGER.debug(f"Tapo {name_suffix} - init - TapoEntity")
+        LOGGER.debug("Initializing TapoEntity: %s", name_suffix)
         TapoEntity.__init__(self, entry, name_suffix)
-        LOGGER.debug(f"Tapo {name_suffix} - init - SelectEntity")
+        LOGGER.debug("Initializing SelectEntity: %s", name_suffix)
         SelectEntity.__init__(self)
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Entity initialized: %s", name_suffix)
 
     @property
     def entity_category(self):
@@ -363,21 +363,21 @@ class TapoNumberEntity(NumberEntity, TapoEntity):
         device_class=None,
         on_method_name=None,
     ):
-        LOGGER.debug(f"Tapo {name_suffix} - init - start")
+        LOGGER.debug("Initializing entity: %s", name_suffix)
         self._hass = hass
         self._attr_icon = icon
         self._attr_device_class = device_class
         self._on_method_name = on_method_name
-        LOGGER.debug(f"Tapo {name_suffix} - init - append")
+        LOGGER.debug("Appending entity: %s", name_suffix)
         entry["entities"].append({"entity": self, "entry": entry})
-        LOGGER.debug(f"Tapo {name_suffix} - init - update")
+        LOGGER.debug("Updating entity: %s", name_suffix)
         self.updateTapo(entry["camData"])
 
-        LOGGER.debug(f"Tapo {name_suffix} - init - TapoEntity")
+        LOGGER.debug("Initializing TapoEntity: %s", name_suffix)
         TapoEntity.__init__(self, entry, name_suffix)
-        LOGGER.debug(f"Tapo {name_suffix} - init - NumberEntity")
+        LOGGER.debug("Initializing NumberEntity: %s", name_suffix)
         NumberEntity.__init__(self)
-        LOGGER.debug(f"Tapo {name_suffix} - init - end")
+        LOGGER.debug("Entity initialized: %s", name_suffix)
 
     @property
     def entity_category(self):
