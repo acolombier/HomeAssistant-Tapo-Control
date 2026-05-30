@@ -37,10 +37,10 @@ def _make_entry(**overrides):
 
 
 class TestTapoEntity:
-    def test_name_constructed_correctly(self):
+    def test_name_returns_suffix_only(self):
         entry = _make_entry()
         entity = TapoEntity(entry, "Switch")
-        assert entity.name == "TestCamera Switch"
+        assert entity.name == "Switch"
 
     def test_unique_id(self):
         entry = _make_entry()
@@ -69,7 +69,7 @@ class TestTapoEntity:
             },
         )
         entity = TapoEntity(entry, "Sensor")
-        assert entity.name == "ChildCamera Sensor"
+        assert entity.name == "Sensor"
 
     def test_unique_id_lowercased(self):
         entry = _make_entry(

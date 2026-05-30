@@ -253,7 +253,7 @@ class TestEndToEndC410:
     def test_reboot_button_created(self):
         entry = self._create_entry()
         btn = TapoRebootButton(entry, MagicMock(), MagicMock())
-        assert btn.name == "Tapo_Camera Reboot"
+        assert btn.name == "Reboot"
 
     def test_firmware_update_normal_matches_real(self):
         camData = deepcopy(self.camData)

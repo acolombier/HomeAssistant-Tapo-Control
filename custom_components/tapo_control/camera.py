@@ -247,6 +247,10 @@ class TapoCamEntity(Camera):
         self._is_cam_entity = True
         self._is_noise_sensor = False
 
+        device_alias = self._attr_extra_state_attributes["device_alias"]
+        camera_name = f"{device_alias} {self._stream_label}"
+        self.entity_id = f"camera.{slugify(camera_name)}"
+
         self.updateTapo(entry["camData"])
 
     async def async_added_to_hass(self) -> None:
@@ -266,8 +270,7 @@ class TapoCamEntity(Camera):
 
     @property
     def name(self) -> str:
-        name = self._attr_extra_state_attributes["device_alias"]
-        name += f" {self._stream_label} Stream"
+        name = f"{self._stream_label} Stream"
         if self._directStream:
             name += " (Direct)"
         return name

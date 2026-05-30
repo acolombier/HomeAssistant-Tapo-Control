@@ -18,6 +18,7 @@ from homeassistant.components.ffmpeg import (
 from homeassistant.const import STATE_ON, STATE_OFF, CONF_IP_ADDRESS
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.util import slugify
 from homeassistant.util.enum import try_parse_enum
 from .const import (
     BRAND,
@@ -373,6 +374,7 @@ class TapoMotionSensor(BinarySensorEntity):
         self._attr_entity_category = event.entity_category
         self._attr_entity_registry_enabled_default = event.entity_enabled
         self._attr_name = f"{self._name} {event.name}"
+        self._attr_entity_id = f"binary_sensor.{slugify(self._attr_name)}"
         self._attr_is_on = event.value
         self._attr_device_class = event.device_class
         self._attr_enabled = event.entity_enabled
@@ -392,7 +394,8 @@ class TapoMotionSensor(BinarySensorEntity):
 
     @property
     def name(self) -> str:
-        return self._attr_name
+        event = self._event
+        return event.name if event else self._attr_name
 
     @property
     def device_class(self) -> Optional[str]:

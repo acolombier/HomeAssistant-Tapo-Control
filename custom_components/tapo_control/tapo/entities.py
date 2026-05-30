@@ -1,4 +1,5 @@
 from homeassistant.core import HomeAssistant
+from homeassistant.util import slugify
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.components.select import SelectEntity
@@ -32,10 +33,13 @@ class TapoEntity(Entity):
         self._controller = entry["controller"]
         self._coordinator = entry["coordinator"]
         self._attributes = entry["camData"]["basic_info"]
+        domain = self.__class__.__module__.split(".")[-1]
+        full_name = f"{self._name} {self._name_suffix}"
+        self.entity_id = f"{domain}.{slugify(full_name)}"
 
     @property
     def name(self) -> str:
-        return "{} {}".format(self._name, self._name_suffix)
+        return self._name_suffix
 
     @property
     def device_info(self) -> DeviceInfo:
