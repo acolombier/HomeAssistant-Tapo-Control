@@ -1,3 +1,4 @@
+import datetime
 import sys
 from unittest.mock import Mock, AsyncMock, MagicMock
 from copy import deepcopy
@@ -52,6 +53,326 @@ sys.modules["haffmpeg.camera"] = MagicMock()
 
 # 5. numpy (image processing in HA stream)
 sys.modules["numpy"] = MagicMock()
+
+# 6. homeassistant — entire package tree (HA is not installed in CI-like envs)
+import types as _types
+
+def _make_ha_module(name, attrs=None):
+    mod = _types.ModuleType(name)
+    if attrs:
+        for k, v in attrs.items():
+            setattr(mod, k, v)
+    sys.modules[name] = mod
+    return mod
+
+# Root homeassistant as a package
+_ha = _make_ha_module("homeassistant")
+_ha.__path__ = []
+
+# UnitOfInformation — fake enum supporting `in` and `()` like real HA enum
+class _UOIMeta(type):
+    _members = {"MB", "GB", "KB", "TB", "B", "kB", "MiB", "KiB"}
+    def __contains__(cls, item):
+        return item in cls._members
+    def __call__(cls, value):
+        return value
+
+class _UnitOfInformation(metaclass=_UOIMeta):
+    MEGABYTES = "MB"
+    GIGABYTES = "GB"
+    KILOBYTES = "kB"
+    BYTES = "B"
+
+# homeassistant.const
+_ha_const = _make_ha_module("homeassistant.const", {
+    "STATE_UNAVAILABLE": "unavailable",
+    "STATE_ON": "on",
+    "STATE_OFF": "off",
+    "STATE_HOME": "home",
+    "STATE_NOT_HOME": "not_home",
+    "CONF_IP_ADDRESS": "ip_address",
+    "CONF_USERNAME": "username",
+    "CONF_PASSWORD": "password",
+    "PERCENTAGE": "%",
+    "SIGNAL_STRENGTH_DECIBELS": "dB",
+    "SIGNAL_STRENGTH_DECIBELS_MILLIWATT": "dBm",
+    "CONF_NAME": "name",
+    "CONF_HOST": "host",
+    "CONF_PORT": "port",
+    "CONF_DEVICE_ID": "device_id",
+    "CONF_MAC": "mac",
+    "CONF_MODEL": "model",
+    "CONF_SW_VERSION": "sw_version",
+    "CONF_MANUFACTURER": "manufacturer",
+    "EVENT_HOMEASSISTANT_STOP": "homeassistant_stop",
+    "EVENT_HOMEASSISTANT_START": "homeassistant_start",
+    "STATE_UNKNOWN": "unknown",
+    "UnitOfInformation": _UnitOfInformation,
+    "__version__": "2025.10.0",
+})
+
+# homeassistant.core
+_ha_core = _make_ha_module("homeassistant.core", {
+    "HomeAssistant": MagicMock,
+    "callback": lambda fn: fn,
+    "Event": MagicMock,
+    "State": MagicMock,
+    "ServiceCall": MagicMock,
+    "ConfigEntry": MagicMock,
+})
+
+# homeassistant.config_entries
+_ha_config_entries = _make_ha_module("homeassistant.config_entries", {
+    "ConfigEntry": MagicMock,
+    "ConfigEntryNotReady": type("ConfigEntryNotReady", (Exception,), {}),
+    "ConfigEntryAuthFailed": type("ConfigEntryAuthFailed", (Exception,), {}),
+})
+
+# homeassistant.exceptions
+_ha_exceptions = _make_ha_module("homeassistant.exceptions", {
+    "HomeAssistantError": type("HomeAssistantError", (Exception,), {}),
+    "ConfigEntryNotReady": _ha_config_entries.ConfigEntryNotReady,
+    "ConfigEntryAuthFailed": _ha_config_entries.ConfigEntryAuthFailed,
+    "Unauthorized": type("Unauthorized", (Exception,), {}),
+    "DependencyError": type("DependencyError", (Exception,), {}),
+})
+
+# homeassistant.helpers
+_ha_helpers = _make_ha_module("homeassistant.helpers")
+_ha_helpers.__path__ = []
+
+# Fake Entity base class — avoids MagicMock attribute interception issues
+class _FakeEntity:
+    hass = None
+    entity_id = None
+    _attr_native_value = None
+    _attr_native_unit_of_measurement = None
+    _attr_device_class = None
+    _attr_state_class = None
+    _attr_icon = None
+    _attr_entity_category = None
+    _attr_entity_registry_enabled_default = True
+    _enabled = False
+    _is_cam_entity = False
+    _is_noise_sensor = False
+    _attr_state = None
+    _attr_is_on = None
+
+    @property
+    def is_on(self):
+        return self._attr_is_on
+
+# homeassistant.helpers.entity
+_ha_helpers_entity = _make_ha_module("homeassistant.helpers.entity", {
+    "Entity": _FakeEntity,
+    "EntityCategory": type("EntityCategory", (), {
+        "CONFIG": 1,
+        "DIAGNOSTIC": 2,
+        "SYSTEM": 3,
+    }),
+    "DeviceInfo": MagicMock,
+    "async_track_entity_registry_updated_event": lambda *a, **kw: lambda: None,
+})
+
+# homeassistant.helpers.entity_platform
+_ha_helpers_entity_platform = _make_ha_module("homeassistant.helpers.entity_platform", {
+    "AddEntitiesCallback": MagicMock,
+})
+
+# homeassistant.helpers.update_coordinator
+_ha_helpers_update_coordinator = _make_ha_module("homeassistant.helpers.update_coordinator", {
+    "DataUpdateCoordinator": MagicMock,
+    "UpdateFailed": type("UpdateFailed", (Exception,), {}),
+})
+
+# homeassistant.helpers.event
+_ha_helpers_event = _make_ha_module("homeassistant.helpers.event", {
+    "async_track_time_interval": MagicMock,
+    "async_track_point_in_utc_time": MagicMock,
+    "async_track_state_change": MagicMock,
+})
+
+# homeassistant.helpers.network
+_ha_helpers_network = _make_ha_module("homeassistant.helpers.network", {
+    "NoURLAvailableError": type("NoURLAvailableError", (Exception,), {}),
+    "get_url": MagicMock(return_value="http://localhost:8123"),
+})
+
+# homeassistant.helpers.dispatcher
+_ha_helpers_dispatcher = _make_ha_module("homeassistant.helpers.dispatcher", {
+    "async_dispatcher_connect": MagicMock,
+    "async_dispatcher_send": MagicMock,
+})
+
+# homeassistant.helpers.device_registry
+_ha_helpers_device_registry = _make_ha_module("homeassistant.helpers.device_registry", {
+    "async_get": MagicMock,
+    "async_entries_for_config_entry": MagicMock(return_value=[]),
+    "DeviceRegistry": MagicMock,
+})
+
+# homeassistant.helpers.config_validation
+_ha_helpers_config_validation = _make_ha_module("homeassistant.helpers.config_validation", {
+    "string": lambda v: v,
+    "boolean": lambda v: bool(v),
+    "number": lambda v: float(v),
+    "positive_int": lambda v: int(v),
+    "ensure_list": lambda v: v if isinstance(v, list) else [v],
+})
+sys.modules["homeassistant.helpers"].config_validation = _ha_helpers_config_validation
+
+# homeassistant.helpers.storage
+_ha_helpers_storage = _make_ha_module("homeassistant.helpers.storage", {
+    "Store": MagicMock,
+})
+
+# homeassistant.components
+_ha_components = _make_ha_module("homeassistant.components")
+_ha_components.__path__ = []
+
+# homeassistant.components.sensor
+_ha_components_sensor = _make_ha_module("homeassistant.components.sensor", {
+    "SensorDeviceClass": type("SensorDeviceClass", (), {
+        "BATTERY": "battery",
+        "SIGNAL_STRENGTH": "signal_strength",
+        "TIMESTAMP": "timestamp",
+        "DATA_SIZE": "data_size",
+        "DATA_RATE": "data_rate",
+    }),
+    "SensorStateClass": type("SensorStateClass", (), {
+        "MEASUREMENT": "measurement",
+        "TOTAL_INCREASING": "total_increasing",
+    }),
+    "SensorEntity": type("SensorEntity", (_FakeEntity,), {}),
+})
+
+# homeassistant.components.binary_sensor
+_ha_components_binary_sensor = _make_ha_module("homeassistant.components.binary_sensor", {
+    "BinarySensorDeviceClass": type("BinarySensorDeviceClass", (), {
+        "MOTION": "motion",
+        "DOOR": "door",
+        "WINDOW": "window",
+        "SOUND": "sound",
+    }),
+    "BinarySensorEntity": type("BinarySensorEntity", (_FakeEntity,), {}),
+})
+
+# homeassistant.components.switch
+_ha_components_switch = _make_ha_module("homeassistant.components.switch", {
+    "SwitchEntity": type("SwitchEntity", (_FakeEntity,), {}),
+})
+
+# homeassistant.components.select
+_ha_components_select = _make_ha_module("homeassistant.components.select", {
+    "SelectEntity": type("SelectEntity", (_FakeEntity,), {}),
+})
+
+# homeassistant.components.button
+_ha_components_button = _make_ha_module("homeassistant.components.button", {
+    "ButtonEntity": type("ButtonEntity", (_FakeEntity,), {}),
+})
+
+# homeassistant.components.number
+_ha_components_number = _make_ha_module("homeassistant.components.number", {
+    "NumberEntity": type("NumberEntity", (_FakeEntity,), {}),
+})
+
+# homeassistant.components.light
+_ha_components_light = _make_ha_module("homeassistant.components.light", {
+    "LightEntity": type("LightEntity", (_FakeEntity,), {}),
+    "ColorMode": type("ColorMode", (), {
+        "ONOFF": "onoff",
+        "BRIGHTNESS": "brightness",
+    }),
+})
+
+# homeassistant.components.update
+_ha_components_update = _make_ha_module("homeassistant.components.update", {
+    "UpdateEntity": type("UpdateEntity", (_FakeEntity,), {}),
+    "UpdateEntityFeature": type("UpdateEntityFeature", (), {
+        "INSTALL": 1,
+        "PROGRESS": 2,
+        "RELEASE_NOTES": 4,
+    }),
+})
+
+# homeassistant.components.camera
+_ha_components_camera = _make_ha_module("homeassistant.components.camera", {
+    "Camera": type("Camera", (_FakeEntity,), {}),
+    "CameraEntityFeature": type("CameraEntityFeature", (), {
+        "STREAM": 1,
+    }),
+})
+
+# homeassistant.components.ffmpeg
+_ha_components_ffmpeg = _make_ha_module("homeassistant.components.ffmpeg", {
+    "DATA_FFMPEG": "ffmpeg",
+    "FFmpegManager": MagicMock,
+    "CONF_EXTRA_ARGUMENTS": "extra_arguments",
+})
+
+# homeassistant.components.stream
+_ha_components_stream = _make_ha_module("homeassistant.components.stream", {
+    "Stream": MagicMock,
+})
+
+# homeassistant.components.media_source
+_ha_components_media_source = _make_ha_module("homeassistant.components.media_source")
+_ha_components_media_source.__path__ = []
+_ha_components_media_source_error = _make_ha_module("homeassistant.components.media_source.error", {
+    "Unresolvable": type("Unresolvable", (Exception,), {}),
+})
+
+# homeassistant.helpers.entity_registry
+_ha_helpers_entity_registry = _make_ha_module("homeassistant.helpers.entity_registry", {
+    "async_entries_for_config_entry": MagicMock(return_value=[]),
+    "async_get": MagicMock,
+})
+
+# homeassistant.util
+_ha_util = _make_ha_module("homeassistant.util")
+_ha_util.__path__ = []
+
+# homeassistant.util.enum
+_ha_util_enum = _make_ha_module("homeassistant.util.enum", {
+    "try_parse_enum": lambda enum, value, default=None: default,
+})
+
+# homeassistant.util.dt
+_ha_util_dt = _make_ha_module("homeassistant.util.dt", {
+    "as_timestamp": MagicMock(side_effect=lambda x: 1000),
+    "utcnow": MagicMock(return_value=datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)),
+    "now": MagicMock(return_value=datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)),
+    "parse_datetime": MagicMock(return_value=datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)),
+})
+
+# homeassistant.util.slugify
+_ha_util_slugify = _make_ha_module("homeassistant.util", {
+    "slugify": lambda s: s.lower().replace(" ", "_").replace("-", "_"),
+})
+
+# homeassistant.backports
+_ha_backports = _make_ha_module("homeassistant.backports")
+_ha_backports.__path__ = []  # Not present in older versions
+
+# homeassistant.loader
+_ha_loader = _make_ha_module("homeassistant.loader", {
+    "async_get_integration": MagicMock,
+    "Integration": MagicMock,
+})
+
+# 7. pytapo (not installed, used by utils.py)
+_pytapo = _make_ha_module("pytapo")
+_pytapo.__path__ = []
+_pytapo_media_stream = _make_ha_module("pytapo.media_stream")
+_pytapo_media_stream.__path__ = []
+_pytapo_media_stream_downloader = _make_ha_module("pytapo.media_stream.downloader", {
+    "Downloader": MagicMock,
+})
+_pytapo.Tapo = MagicMock
+
+# 8. Add CONST_HOST to const mock
+sys.modules["homeassistant.const"].CONF_HOST = "host"
 
 # ---------------------------------------------------------------------------
 

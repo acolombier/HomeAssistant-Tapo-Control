@@ -255,7 +255,11 @@ class TapoBatterySensor(TapoSensorEntity):
         if not camData:
             self._attr_native_value = STATE_UNAVAILABLE
         else:
-            self._attr_native_value = camData["basic_info"]["battery_percent"]
+            try:
+                self._attr_native_value = camData["basic_info"]["battery_percent"]
+            except KeyError:
+                self._attr_native_value = STATE_UNAVAILABLE
+                LOGGER.debug("battery_percent not available in camData")
 
 
 class TapoHDDSensor(TapoSensorEntity):
